@@ -1,0 +1,19 @@
+{
+  "name": "@framework/common",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build:dev": "tsc && npm link",
+    "build:watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^17.0.23"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.1.13"
+  }
+}

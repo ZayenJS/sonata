@@ -1,0 +1,11 @@
+export const RENDER_METADATA = '__RENDER_TEMPLATE__';
+export const HTTP_CODE_METADATA = '__HTTP_CODE__';
+export const HEADERS_METADATA = '__HEADERS__';
+export const REDIRECT_METADATA = '__REDIRECT__';
+export const INJECTABLE = '__INJECT__';
+export const CONTROLLER_METADATA = '__CONTROLLER__';
+
+export const QUERY_PARAM_METADATA = '__QUERY_PARAM__';
+export const BODY_PARAM_METADATA = '__BODY_PARAM__';
+export const ROUTE_PARAM_METADATA = '__ROUTE_PARAM__';
+export const DEPT_INJECTION_METADATA = '__DEPENDENCY_INJECTION__';
