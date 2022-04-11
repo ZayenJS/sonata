@@ -4,6 +4,7 @@ import {
   ROUTE_PARAM_METADATA,
   DEPT_INJECTION_METADATA,
 } from '../../constants';
+import { extendMetadataArray } from '../../utils';
 
 /**
  * Route handler parameter decorator. Extracts the query
@@ -23,23 +24,12 @@ export function Query(name: string): ParameterDecorator;
 export function Query(): ParameterDecorator;
 export function Query(name?: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
-    const exisitingMetadata = Reflect.getOwnMetadata(
-      QUERY_PARAM_METADATA,
-      target,
-      propertyKey,
-    );
-
     const metadata = {
       name: name ?? null,
       parameterIndex,
     };
 
-    Reflect.defineMetadata(
-      QUERY_PARAM_METADATA,
-      [...(exisitingMetadata ?? []), metadata],
-      target,
-      propertyKey,
-    );
+    extendMetadataArray(QUERY_PARAM_METADATA, [metadata], target, propertyKey);
   };
 }
 
@@ -60,25 +50,12 @@ export function Body(name: string): ParameterDecorator;
 export function Body(): ParameterDecorator;
 export function Body(name?: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
-    const exisitingMetadata = Reflect.getOwnMetadata(
-      BODY_PARAM_METADATA,
-      target,
-      propertyKey,
-    );
-
     const metadata = {
       name: name ?? null,
       parameterIndex,
     };
 
-    console.log({ exisitingMetadata, metadata });
-
-    Reflect.defineMetadata(
-      BODY_PARAM_METADATA,
-      [...(exisitingMetadata ?? []), metadata],
-      target,
-      propertyKey,
-    );
+    extendMetadataArray(BODY_PARAM_METADATA, [metadata], target, propertyKey);
   };
 }
 
@@ -103,44 +80,22 @@ export function Param(): ParameterDecorator;
 export function Param(property: string): ParameterDecorator;
 export function Param(property?: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
-    const exisitingMetadata = Reflect.getOwnMetadata(
-      ROUTE_PARAM_METADATA,
-      target,
-      propertyKey,
-    );
-
     const metadata = {
       property,
       parameterIndex,
     };
 
-    Reflect.defineMetadata(
-      ROUTE_PARAM_METADATA,
-      [...(exisitingMetadata ?? []), metadata],
-      target,
-      propertyKey,
-    );
+    extendMetadataArray(ROUTE_PARAM_METADATA, [metadata], target, propertyKey);
   };
 }
 
 export function DeptInjection(classToInject: Function): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
-    const exisitingMetadata = Reflect.getOwnMetadata(
-      DEPT_INJECTION_METADATA,
-      target,
-      propertyKey,
-    );
-
     const metadata = {
       class: classToInject,
       parameterIndex,
     };
 
-    Reflect.defineMetadata(
-      DEPT_INJECTION_METADATA,
-      [...(exisitingMetadata ?? []), metadata],
-      target,
-      propertyKey,
-    );
+    extendMetadataArray(DEPT_INJECTION_METADATA, [metadata], target, propertyKey);
   };
 }

@@ -4,8 +4,10 @@ import path from 'path';
 import {
   BODY_PARAM_METADATA,
   DEPT_INJECTION_METADATA,
+  HEADERS_METADATA,
   QUERY_PARAM_METADATA,
 } from './constants';
+import { RequestMethod } from './enums/request-methods.enum';
 import { RequestParser } from './Helpers/RequestParser';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
@@ -52,10 +54,10 @@ export class App {
   public listen(): this;
   public listen(port: number): this;
   public listen(port: number, callback: () => void): this;
-  public listen(port?: number, callback?: () => void) {
-    this._nodeServer.listen(port ?? 5000, () => {
+  public listen(port: number = 5000, callback?: () => void) {
+    this._nodeServer.listen(port, () => {
       // TODO: logging stuff...
-      console.info('Server is listening on port 3000');
+      console.info(`Server is listening on port ${port}`);
 
       callback?.();
     });
@@ -80,13 +82,17 @@ export class App {
       const routes = [...registeredRoutes];
 
       const matchingRoute = routes.find(
-        route => url?.includes(route.getPath()) && route.getMethod() === method,
+        route =>
+          url?.includes(route.getPath()) &&
+          (route.getMethod() === method || route.getMethod() === RequestMethod.ALL),
       );
 
       if (registeredRoutes.size === 0 || !matchingRoute) {
         res.writeHead(404);
         return res.end('404');
       }
+
+      console.log(`matched ${method} ${url}`);
 
       this.registerMiddlewares();
 
@@ -144,6 +150,24 @@ export class App {
         const instance = new deptInjectionData.class();
         args[deptInjectionData.parameterIndex] = instance;
       }
+
+      console.log({
+        queryMetadata,
+        bodyMetadata,
+        deptInjectionMetadata,
+        returnType: Reflect.getMetadata(
+          'design:returntype',
+          controller,
+          matchingRoute.getName(),
+        ).name,
+      });
+
+      const headersMetadata = Reflect.getMetadata(
+        HEADERS_METADATA,
+        controller,
+        matchingRoute.getName(),
+      );
+      console.log({ headersMetadata });
 
       const endResponse = routeHandler(...args);
 
