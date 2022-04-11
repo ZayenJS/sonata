@@ -15,11 +15,11 @@ import { extendMetadataArray } from '../../utils';
  */
 export function Header(name: string, value: string): MethodDecorator {
   return (
-    _target: object,
-    _key: string | symbol,
+    target: object,
+    key: string | symbol,
     descriptor: TypedPropertyDescriptor<any>,
   ) => {
-    extendMetadataArray(HEADERS_METADATA, [{ name, value }], descriptor.value);
+    extendMetadataArray(HEADERS_METADATA, [{ name, value }], target, key);
 
     return descriptor;
   };

@@ -5,6 +5,7 @@ import {
   BODY_PARAM_METADATA,
   DEPT_INJECTION_METADATA,
   HEADERS_METADATA,
+  HTTP_STATUS_CODE_METADATA,
   QUERY_PARAM_METADATA,
 } from './constants';
 import { RequestMethod } from './enums/request-methods.enum';
@@ -13,14 +14,13 @@ import { Request } from './http/Request';
 import { Response } from './http/Response';
 
 import { Router } from './http/routing/Router';
+import { InjectionContainer } from './Injection/InjectionContainer';
 
 // TODO: expose a wrapper of the App class to the outside world
 
 export class App {
   private _router: Router;
   private _nodeServer: http.Server = new Server();
-  private _controllersDirectory: string = '';
-  private _controllers = new Set<Function>();
 
   constructor() {
     this._router = new Router();
@@ -28,25 +28,6 @@ export class App {
 
   public get router() {
     return this._router;
-  }
-
-  public registerControllers() {
-    fs.readdir(this._controllersDirectory, (err, files) => {
-      if (err) {
-        console.error(err);
-        process.exit(1);
-      }
-
-      for (const file of files) {
-        require(path.join(this._controllersDirectory, file));
-      }
-    });
-  }
-
-  public setControllersDirectory(directory: string) {
-    this._controllersDirectory = directory;
-
-    return this;
   }
 
   public registerMiddlewares() {}
@@ -101,10 +82,15 @@ export class App {
 
       const args: unknown[] = [];
 
+      console.log(InjectionContainer.getInstance());
+
       // QUERY PARAM DECORATOR
       const queryMetadata =
-        Reflect.getMetadata(QUERY_PARAM_METADATA, controller, matchingRoute.getName()) ??
-        [];
+        Reflect.getMetadata(
+          QUERY_PARAM_METADATA,
+          controller,
+          matchingRoute.getName(),
+        ) ?? [];
 
       for (const queryData of queryMetadata) {
         let queryParam: any = request.query.get(queryData.name);
@@ -121,8 +107,11 @@ export class App {
 
       // BODY PARAM DECORATOR
       const bodyMetadata =
-        Reflect.getMetadata(BODY_PARAM_METADATA, controller, matchingRoute.getName()) ??
-        [];
+        Reflect.getMetadata(
+          BODY_PARAM_METADATA,
+          controller,
+          matchingRoute.getName(),
+        ) ?? [];
 
       for (const bodyData of bodyMetadata) {
         let bodyParam: any = request.body.get(bodyData.name);
@@ -147,8 +136,10 @@ export class App {
         ) ?? [];
 
       for (const deptInjectionData of deptInjectionMetadata) {
-        const instance = new deptInjectionData.class();
-        args[deptInjectionData.parameterIndex] = instance;
+        console.log(deptInjectionData);
+
+        // const instance = new deptInjectionData.class();
+        // args[deptInjectionData.parameterIndex] = instance;
       }
 
       console.log({
@@ -162,6 +153,7 @@ export class App {
         ).name,
       });
 
+      // HEADER DECORATOR
       const headersMetadata = Reflect.getMetadata(
         HEADERS_METADATA,
         controller,
@@ -169,12 +161,21 @@ export class App {
       );
       console.log({ headersMetadata });
 
+      const statusCodeMetadata = Reflect.getMetadata(
+        HTTP_STATUS_CODE_METADATA,
+        controller,
+        matchingRoute.getName(),
+      );
+      console.log({ statusCodeMetadata });
+
       const endResponse = routeHandler(...args);
 
       if (endResponse instanceof Promise) {
         return endResponse.then(responseData => {
           const data =
-            responseData instanceof Object ? { ...responseData } : { body: responseData };
+            responseData instanceof Object
+              ? { ...responseData }
+              : { body: responseData };
 
           response
             .status(data.status)
@@ -200,16 +201,6 @@ export class App {
     // add to the dependency injection container
 
     return this;
-  }
-
-  public addController(controller: Function) {
-    this._controllers.add(controller);
-
-    return this;
-  }
-
-  public get controllers() {
-    return this._controllers;
   }
 }
 

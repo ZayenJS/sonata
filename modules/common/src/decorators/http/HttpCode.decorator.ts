@@ -1,4 +1,4 @@
-import { HTTP_CODE_METADATA } from '../../constants';
+import { HTTP_STATUS_CODE_METADATA } from '../../constants';
 import { HttpStatus } from '../../enums/http-status.enum';
 
 /**
@@ -10,11 +10,12 @@ import { HttpStatus } from '../../enums/http-status.enum';
  */
 export function HttpCode(statusCode: HttpStatus): MethodDecorator {
   return (
-    _target: object,
-    _key: string | symbol,
+    target: object,
+    key: string | symbol,
     descriptor: TypedPropertyDescriptor<any>,
   ) => {
-    Reflect.defineMetadata(HTTP_CODE_METADATA, statusCode, descriptor.value);
+    Reflect.defineMetadata(HTTP_STATUS_CODE_METADATA, statusCode, target, key);
+
     return descriptor;
   };
 }

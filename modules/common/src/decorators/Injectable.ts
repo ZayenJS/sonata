@@ -1,19 +1,21 @@
 import App from '../App';
+import { INJECTABLE } from '../constants';
+import { InjectionType } from '../enums/InjectionType';
+import { InjectionContainer } from '../Injection/InjectionContainer';
+import { extendMetadataArray } from '../utils';
 
-export function Injectable(type: string) {
-  return (target: object) => {
-    const exisitingMetadata = Reflect.getOwnMetadata('__INJECTABLE__', target);
-
+export function Injectable(type: InjectionType) {
+  return (target: Function) => {
     const metadata = {
       type,
+      name: target.name,
+      target,
     };
 
-    Reflect.defineMetadata(
-      '__INJECTABLE__',
-      [...(exisitingMetadata ?? []), metadata],
-      target,
-    );
+    extendMetadataArray(INJECTABLE, [metadata], target);
 
-    App.addInjectable(type, target);
+    InjectionContainer.getInstance().add(type, target.name, target);
+
+    console.info(`Injectable ${type} ${target.name} registered`);
   };
 }

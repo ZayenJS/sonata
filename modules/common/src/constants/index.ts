@@ -1,5 +1,5 @@
 export const RENDER_METADATA = '__RENDER_TEMPLATE__';
-export const HTTP_CODE_METADATA = '__HTTP_CODE__';
+export const HTTP_STATUS_CODE_METADATA = '__HTTP_STATUS_CODE__';
 export const HEADERS_METADATA = '__HEADERS__';
 export const REDIRECT_METADATA = '__REDIRECT__';
 export const INJECTABLE = '__INJECT__';

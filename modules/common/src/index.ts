@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 
 import app, { App } from './App';
+import { InjectionType } from './enums/InjectionType';
 import { FS } from './Helpers/FS';
+import { Registerer } from './Services/Registerer';
 
 export * from './http/Request';
 export * from './http/Response';
@@ -14,22 +16,33 @@ export default {
   createApp() {
     app.create();
 
-    const rootDir = FS.findRootDirectory(process.cwd());
+    const rootDir = FS.findRootDirectory();
     if (!rootDir) {
       throw new Error('Could not find package.json');
     }
 
-    const controllersDirectory = FS.search('controllers', rootDir, {
-      direction: 'downward',
-      type: 'directory',
-    });
+    const controllersDirectory = FS.search(/[cC]ontrollers?/, rootDir, 'directory');
 
-    if (!controllersDirectory) {
-      throw new Error('Could not find controllers directory');
-    }
+    const servicesDirectory = FS.search(/[sS]ervices?/, rootDir, 'directory');
+
+    const entityDirectory = FS.search(
+      /[eE]ntit[y|ies]|[mM]odels?/,
+      rootDir,
+      'directory',
+    );
 
     try {
-      app.setControllersDirectory(controllersDirectory).registerControllers();
+      console.log({
+        controllersDirectory,
+        servicesDirectory,
+        entityDirectory,
+      });
+
+      if (controllersDirectory)
+        Registerer.load(controllersDirectory, InjectionType.CONTROLLER);
+      if (servicesDirectory)
+        Registerer.load(servicesDirectory, InjectionType.SERVICE);
+      if (entityDirectory) Registerer.load(entityDirectory, InjectionType.ENTITY);
     } catch (e) {
       console.error(e);
       process.exit(1);

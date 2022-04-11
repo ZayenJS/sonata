@@ -1,46 +1,66 @@
 import path from 'path';
 import fs from 'fs';
 
-interface FSSearchOptions {
-  direction?: 'upward' | 'downward';
-  type?: 'file' | 'directory';
-}
+interface FSSearchOptions {}
 
 export class FS {
-  public static findRootDirectory(ressourcePath: string): string | void {
-    const packageJSON = FS.search('package.json', ressourcePath, {
-      direction: 'upward',
-      type: 'file',
-    });
+  public static findRootDirectory(): string | void {
+    const mainFilePath = require.main?.filename;
 
-    if (packageJSON) {
-      return path.join(path.sep, ...packageJSON.split('/').slice(0, -1));
+    if (!mainFilePath) {
+      throw new Error('An error occured while trying to find the root directory');
     }
+
+    return path.dirname(mainFilePath);
   }
 
-  public static search(name: string, path: string, options?: FSSearchOptions): string | void {
-    const { direction, type } = options || { direction: 'downward', type: 'file' };
+  public static search(
+    fileOrDirectoryName: RegExp,
+    basePath: string,
+    type: 'file' | 'directory',
+  ): string | void {
+    const basePaths = [basePath];
 
-    const basePath = `${path}/${name}`;
+    while (basePaths.length) {
+      const basePath = basePaths.shift();
 
-    const pathExists = fs.existsSync(basePath);
-    if (pathExists && FS.isRigthType(basePath, type)) {
-      return basePath;
-    }
-
-    try {
-      if (direction === 'upward') {
-        return FS.upwardSearch(name, path, options);
+      if (!basePath) {
+        throw new Error(`Could not find ${type} ${fileOrDirectoryName}`);
       }
 
-      return FS.downwardSearch(name, path, options);
-    } catch (error) {
-      console.error(error);
+      if (this.isRigthType(basePath, type)) {
+        const fileOrDirectoryNameMatch = fileOrDirectoryName.exec(basePath);
+
+        if (fileOrDirectoryNameMatch) {
+          return basePath;
+        }
+      }
+
+      const files = fs.readdirSync(basePath);
+
+      for (const file of files) {
+        const filePath = path.join(basePath, file);
+
+        if (this.isRigthType(filePath, type)) {
+          const fileOrDirectoryNameMatch = fileOrDirectoryName.exec(filePath);
+
+          if (fileOrDirectoryNameMatch) {
+            return filePath;
+          }
+        }
+
+        basePaths.push(filePath);
+      }
     }
   }
 
   private static isRigthType(basePath: string, type?: 'file' | 'directory') {
-    const stats = fs.lstatSync(basePath);
+    let stats: fs.Stats;
+    try {
+      stats = fs.lstatSync(basePath);
+    } catch (e) {
+      return false;
+    }
 
     if (type === 'file' && stats.isFile()) {
       return true;
@@ -51,26 +71,5 @@ export class FS {
     }
 
     return false;
-  }
-
-  private static upwardSearch(name: string, path: string, options?: FSSearchOptions) {
-    const parentPath = path.split('/').slice(0, -1).join('/');
-    return FS.search(name, parentPath, options);
-  }
-
-  private static downwardSearch(name: string, path: string, options?: FSSearchOptions) {
-    const subDirectoryContent = fs.readdirSync(path);
-
-    for (const subDirectory of subDirectoryContent) {
-      const subDirectoryPath = `${path}/${subDirectory}`;
-      const subDirectoryStats = fs.lstatSync(subDirectoryPath);
-
-      if (subDirectoryStats.isDirectory()) {
-        const result = FS.search(name, subDirectoryPath, options);
-        if (result) {
-          return result;
-        }
-      }
-    }
   }
 }
