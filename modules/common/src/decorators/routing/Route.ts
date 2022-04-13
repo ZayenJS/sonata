@@ -22,7 +22,7 @@ export function Route(
       return originalMethod.apply(target, args);
     };
 
-    const ownMetadataKeys = Reflect.getOwnMetadataKeys(target, key);
+    // const ownMetadataKeys = Reflect.getOwnMetadataKeys(target, key);
 
     // console.log(Reflect.getMetadata('design:type', target, key));
     // Gets the classes to be injected
@@ -39,12 +39,12 @@ export function Route(
 
     // console.log(Reflect.getMetadata('design:returntype', target, key));
 
-    for (const key of ownMetadataKeys) {
-      if (key.includes('#')) {
-        const metadata = Reflect.getOwnMetadata(key, target, key);
-        Reflect.defineMetadata(key, metadata, target, key);
-      }
-    }
+    // for (const key of ownMetadataKeys) {
+    //   if (key.includes('#')) {
+    //     const metadata = Reflect.getOwnMetadata(key, target, key);
+    //     Reflect.defineMetadata(key, metadata, target, key);
+    //   }
+    // }
 
     for (const method of options.methods) {
       const route = new RouteClass({

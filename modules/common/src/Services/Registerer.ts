@@ -1,16 +1,38 @@
 import fs from 'fs';
 import path from 'path';
+import { INJECTABLE } from '../constants';
 
 import { InjectionType } from '../enums/InjectionType';
-import { InjectionContainer } from '../Injection/InjectionContainer';
+import {
+  Constructor,
+  InjectableMetadata,
+  InjectionContainer,
+} from '../Injection/InjectionContainer';
+import { extendMetadataArray, getClassDependencies } from '../utils';
 
 export class Registerer {
   public static registerInjectable(
     injectionType: InjectionType,
     name: string,
-    constructor: Function,
+    constructor: Constructor,
   ): void {
-    InjectionContainer.getInstance().add(injectionType, name, constructor);
+    const deps = getClassDependencies(constructor);
+
+    const metadata: InjectableMetadata = {
+      type: injectionType,
+      name: constructor.name,
+      deps,
+      target: constructor,
+    };
+
+    extendMetadataArray(INJECTABLE, [metadata], constructor);
+
+    InjectionContainer.getInstance().add({
+      type: injectionType,
+      name,
+      target: constructor,
+      deps: Reflect.getMetadata('design:paramtypes', constructor) || [],
+    });
   }
 
   public static load(directory: string, type: InjectionType): Registerer {

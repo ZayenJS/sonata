@@ -1,3 +1,5 @@
+import { InjectableDependencyMetadata } from '../Injection/InjectionContainer';
+
 export function extendMetadataArray<T extends Array<unknown>>(
   key: string,
   metadata: T,
@@ -40,3 +42,18 @@ export const isClass = (fn: Function) =>
     'Object',
     'Function',
   ].includes(fn.name);
+
+export const getClassDependencies = (
+  target: Function,
+): InjectableDependencyMetadata[] => {
+  const constructorParamTypes = (Reflect.getMetadata('design:paramtypes', target) ||
+    []) as Function[];
+
+  console.log({ constructorParamTypes });
+
+  return constructorParamTypes
+    .map((paramType, index) =>
+      isClass(paramType) ? { class: paramType, index } : null,
+    )
+    .filter(x => x) as InjectableDependencyMetadata[];
+};

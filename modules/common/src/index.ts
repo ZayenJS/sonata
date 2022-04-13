@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import app, { App } from './App';
+import app from './App';
 import { InjectionType } from './enums/InjectionType';
 import { FS } from './Helpers/FS';
 import { Registerer } from './Services/Registerer';

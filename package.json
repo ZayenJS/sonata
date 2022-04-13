@@ -1,8 +1,8 @@
 {
-  "name": "@sonata/common",
+  "name": "sonata",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "index.js",
   "scripts": {
     "build:dev": "tsc && npm link",
     "build:watch": "tsc -w"

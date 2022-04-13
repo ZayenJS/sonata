@@ -1,6 +1,4 @@
-import fs from 'fs';
 import http, { Server } from 'http';
-import path from 'path';
 import {
   BODY_PARAM_METADATA,
   DEPT_INJECTION_METADATA,
@@ -14,7 +12,7 @@ import { Request } from './http/Request';
 import { Response } from './http/Response';
 
 import { Router } from './http/routing/Router';
-import { InjectionContainer } from './Injection/InjectionContainer';
+import { Constructor, InjectionContainer } from './Injection/InjectionContainer';
 
 // TODO: expose a wrapper of the App class to the outside world
 
@@ -52,7 +50,7 @@ export class App {
       const method = req.method;
 
       const request = new Request(req);
-      const response = new Response(res);
+      const response = new Response(res) as Response;
 
       const parsedUrl = url?.split('?');
       request.query = RequestParser.parseQuery(parsedUrl?.[1]);
@@ -62,9 +60,10 @@ export class App {
 
       const routes = [...registeredRoutes];
 
+      // TODO: URL matching with route params
       const matchingRoute = routes.find(
         route =>
-          url?.includes(route.getPath()) &&
+          url === route.getPath() &&
           (route.getMethod() === method || route.getMethod() === RequestMethod.ALL),
       );
 
@@ -81,8 +80,6 @@ export class App {
       const controller = matchingRoute.getController();
 
       const args: unknown[] = [];
-
-      console.log(InjectionContainer.getInstance());
 
       // QUERY PARAM DECORATOR
       const queryMetadata =
@@ -135,23 +132,55 @@ export class App {
           matchingRoute.getName(),
         ) ?? [];
 
+      // TODO: refactor DI and create a method in the DI container (possibly recursive...)
+      //#region DI
       for (const deptInjectionData of deptInjectionMetadata) {
-        console.log(deptInjectionData);
+        const classToInject = InjectionContainer.getInstance().find(
+          deptInjectionData.type.name,
+        );
 
-        // const instance = new deptInjectionData.class();
-        // args[deptInjectionData.parameterIndex] = instance;
+        if (!classToInject) {
+          throw new Error(`${deptInjectionData.type.name} not found`);
+        }
+
+        const formedDeps = [];
+
+        for (const dep of classToInject.deps) {
+          const depClass = InjectionContainer.getInstance().find(
+            (dep as unknown as Function).name,
+          );
+
+          if (!depClass) continue;
+
+          const classDeps = [];
+          if (depClass?.deps.length) {
+            classDeps.push(
+              ...depClass.deps.map(d => new (d as unknown as Constructor)()),
+            );
+          }
+
+          formedDeps.push(new depClass.target(...classDeps));
+        }
+
+        args[deptInjectionData.parameterIndex] = new classToInject.target(
+          ...formedDeps,
+        );
+
+        console.log({ args });
+        //#endregion DI
       }
 
-      console.log({
-        queryMetadata,
-        bodyMetadata,
-        deptInjectionMetadata,
-        returnType: Reflect.getMetadata(
-          'design:returntype',
-          controller,
-          matchingRoute.getName(),
-        ).name,
-      });
+      // console.log({
+      //   queryMetadata,
+      //   bodyMetadata,
+      //   deptInjectionMetadata,
+      //   returnType: Reflect.getMetadata(
+      //     'design:returntype',
+      //     controller,
+      //     matchingRoute.getName(),
+      //   ).name,
+      //   args,
+      // });
 
       // HEADER DECORATOR
       const headersMetadata = Reflect.getMetadata(
@@ -159,37 +188,38 @@ export class App {
         controller,
         matchingRoute.getName(),
       );
-      console.log({ headersMetadata });
+
+      const headers = headersMetadata?.reduce(
+        (acc: { [key: string]: string }, header: { [key: string]: string }) => {
+          acc[header.name] = header.value;
+          return acc;
+        },
+        {},
+      );
 
       const statusCodeMetadata = Reflect.getMetadata(
         HTTP_STATUS_CODE_METADATA,
         controller,
         matchingRoute.getName(),
       );
-      console.log({ statusCodeMetadata });
 
-      const endResponse = routeHandler(...args);
+      const statusCode = statusCodeMetadata ?? 200;
 
-      if (endResponse instanceof Promise) {
-        return endResponse.then(responseData => {
-          const data =
-            responseData instanceof Object
-              ? { ...responseData }
-              : { body: responseData };
+      let endResponse = await routeHandler(...args);
 
-          response
-            .status(data.status)
-            .setHeader('Content-Type', data.headers?.['Content-Type'] as string)
-            .send(data.body);
-        });
+      response.status(statusCode).setHeaders(headers);
+
+      if (endResponse instanceof Object && !endResponse.headers) {
+        endResponse = JSON.stringify(endResponse);
+        response.setHeader('Content-Type', 'application/json');
+      } else if (endResponse instanceof Object && endResponse.headers) {
+        response.setHeaders(endResponse.headers);
+        endResponse = endResponse.body;
       }
-      const data =
-        endResponse instanceof Object ? { ...endResponse } : { body: endResponse };
 
-      return response
-        .status(data.status)
-        .setHeader('Content-Type', data.headers?.['Content-Type'])
-        .send(data.body);
+      console.log(endResponse);
+
+      return response.send(endResponse);
     });
   }
 

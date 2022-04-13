@@ -39,6 +39,8 @@ export class Response {
   public setHeader(name?: string, value?: string) {
     if (!name || !value) return this;
 
+    if (!this._headers) this._headers = {};
+
     this._headers[name] = value;
 
     return this;

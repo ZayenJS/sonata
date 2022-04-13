@@ -1,16 +1,17 @@
 import { INJECTABLE } from '../constants';
 import { InjectionType } from '../enums/InjectionType';
 import {
-  Constructor,
-  InjectableMetadata,
   InjectionContainer,
+  InjectableMetadata,
+  Constructor,
 } from '../Injection/InjectionContainer';
 import { extendMetadataArray, getClassDependencies } from '../utils';
 
-export const Controller = (target: Constructor) => {
+export const Service = (target: Constructor) => {
   // const deps = getClassDependencies(target);
+
   // const metadata: InjectableMetadata = {
-  //   type: InjectionType.CONTROLLER,
+  //   type: InjectionType.SERVICE,
   //   name: target.name,
   //   deps,
   //   target,
@@ -18,9 +19,7 @@ export const Controller = (target: Constructor) => {
 
   // extendMetadataArray(INJECTABLE, [metadata], target);
 
-  // // TODO: logging here to see if the controller was registered
-
   // InjectionContainer.getInstance().add(metadata);
 
-  console.log(`Controller ${target.name} registered`);
+  console.info(`Service ${target.name} registered`);
 };

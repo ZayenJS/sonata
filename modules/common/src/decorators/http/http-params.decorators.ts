@@ -89,10 +89,10 @@ export function Param(property?: string): ParameterDecorator {
   };
 }
 
-export function DeptInjection(classToInject: Function): ParameterDecorator {
+export function Inject(): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
     const metadata = {
-      class: classToInject,
+      class: target,
       parameterIndex,
     };
 

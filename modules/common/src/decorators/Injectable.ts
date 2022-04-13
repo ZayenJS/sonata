@@ -1,21 +1,25 @@
 import App from '../App';
 import { INJECTABLE } from '../constants';
 import { InjectionType } from '../enums/InjectionType';
-import { InjectionContainer } from '../Injection/InjectionContainer';
-import { extendMetadataArray } from '../utils';
+import {
+  Constructor,
+  InjectableMetadata,
+  InjectionContainer,
+} from '../Injection/InjectionContainer';
+import { extendMetadataArray, getClassDependencies } from '../utils';
 
-export function Injectable(type: InjectionType) {
-  return (target: Function) => {
-    const metadata = {
-      type,
-      name: target.name,
-      target,
-    };
+export const Injectable = (type: InjectionType) => (target: Constructor) => {
+  // const deps = getClassDependencies(target);
+  // const metadata: InjectableMetadata = {
+  //   type,
+  //   name: target.name,
+  //   deps,
+  //   target,
+  // };
 
-    extendMetadataArray(INJECTABLE, [metadata], target);
+  // extendMetadataArray(INJECTABLE, [metadata], target);
 
-    InjectionContainer.getInstance().add(type, target.name, target);
+  // InjectionContainer.getInstance().add(metadata);
 
-    console.info(`Injectable ${type} ${target.name} registered`);
-  };
-}
+  console.info(`Injectable ${type} ${target.name} registered`);
+};

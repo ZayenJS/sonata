@@ -8,8 +8,8 @@ export abstract class AbstractController {
     }
 
     return {
-      status,
       body: JSON.stringify(data),
+      status,
       headers: {
         'Content-Type': 'application/json',
       },
