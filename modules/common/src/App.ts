@@ -6,10 +6,13 @@ import {
   HTTP_STATUS_CODE_METADATA,
   QUERY_PARAM_METADATA,
 } from './constants';
+import { HttpStatus } from './enums/http-status.enum';
 import { RequestMethod } from './enums/request-methods.enum';
 import { RequestParser } from './Helpers/RequestParser';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
+import { MatchedRoute } from './http/routing/MatchedRoute';
+import { RouteMatcher } from './http/routing/RouteMatcher';
 
 import { Router } from './http/routing/Router';
 import { Constructor, InjectionContainer } from './Injection/InjectionContainer';
@@ -24,8 +27,12 @@ export class App {
     this._router = new Router();
   }
 
-  public get router() {
+  public get router(): Router {
     return this._router;
+  }
+
+  private set router(router: Router) {
+    this._router = router;
   }
 
   public registerMiddlewares() {}
@@ -49,45 +56,43 @@ export class App {
       const url = req.url;
       const method = req.method;
 
+      let incompleteRequest = false;
+
+      if (!req.url) incompleteRequest = true;
+      if (!req.method) incompleteRequest = true;
+
+      if (incompleteRequest) {
+        res.writeHead(HttpStatus.BAD_REQUEST, { 'Content-Type': 'text/plain' });
+        res.end('Bad Request');
+        return;
+      }
+
       const request = new Request(req);
       const response = new Response(res) as Response;
+      this.router.request = request;
 
-      const parsedUrl = url?.split('?');
-      request.query = RequestParser.parseQuery(parsedUrl?.[1]);
-      request.body = await RequestParser.parseBody(req);
+      const matchingRoute = this.router.getMatchingRoute();
 
-      const registeredRoutes = this.router.getRoutes();
-
-      const routes = [...registeredRoutes];
-
-      // TODO: URL matching with route params
-      const matchingRoute = routes.find(
-        route =>
-          url === route.getPath() &&
-          (route.getMethod() === method || route.getMethod() === RequestMethod.ALL),
-      );
-
-      if (registeredRoutes.size === 0 || !matchingRoute) {
+      if (!this.router.routesLength || !matchingRoute) {
+        // TODO: expose a 404 page to the user to be Customized
         res.writeHead(404);
         return res.end('404');
       }
 
-      console.log(`matched ${method} ${url}`);
+      request.query = matchingRoute.extractQueryParams();
+      request.body = await RequestParser.parseBody(req);
 
       this.registerMiddlewares();
 
       const routeHandler = matchingRoute.getHandler();
       const controller = matchingRoute.getController();
 
-      const args: unknown[] = [];
+      // TODO: Get the position of the route param args with the use of the @Param() decorator
+      const args: unknown[] = [...matchingRoute.params.map(param => param.value)];
 
       // QUERY PARAM DECORATOR
       const queryMetadata =
-        Reflect.getMetadata(
-          QUERY_PARAM_METADATA,
-          controller,
-          matchingRoute.getName(),
-        ) ?? [];
+        Reflect.getMetadata(QUERY_PARAM_METADATA, controller, matchingRoute.getName()) ?? [];
 
       for (const queryData of queryMetadata) {
         let queryParam: any = request.query.get(queryData.name);
@@ -104,11 +109,7 @@ export class App {
 
       // BODY PARAM DECORATOR
       const bodyMetadata =
-        Reflect.getMetadata(
-          BODY_PARAM_METADATA,
-          controller,
-          matchingRoute.getName(),
-        ) ?? [];
+        Reflect.getMetadata(BODY_PARAM_METADATA, controller, matchingRoute.getName()) ?? [];
 
       for (const bodyData of bodyMetadata) {
         let bodyParam: any = request.body.get(bodyData.name);
@@ -124,13 +125,10 @@ export class App {
         args[bodyData.parameterIndex] = bodyParam;
       }
 
-      // DEPENDANCY INJECTION
+      // DEPENDENCY INJECTION
       const deptInjectionMetadata =
-        Reflect.getMetadata(
-          DEPT_INJECTION_METADATA,
-          controller,
-          matchingRoute.getName(),
-        ) ?? [];
+        Reflect.getMetadata(DEPT_INJECTION_METADATA, controller, matchingRoute.getName()) ??
+        [];
 
       // TODO: refactor DI and create a method in the DI container (possibly recursive...)
       //#region DI
@@ -154,17 +152,13 @@ export class App {
 
           const classDeps = [];
           if (depClass?.deps.length) {
-            classDeps.push(
-              ...depClass.deps.map(d => new (d as unknown as Constructor)()),
-            );
+            classDeps.push(...depClass.deps.map(d => new (d as unknown as Constructor)()));
           }
 
           formedDeps.push(new depClass.target(...classDeps));
         }
 
-        args[deptInjectionData.parameterIndex] = new classToInject.target(
-          ...formedDeps,
-        );
+        args[deptInjectionData.parameterIndex] = new classToInject.target(...formedDeps);
 
         console.log({ args });
         //#endregion DI
@@ -197,6 +191,7 @@ export class App {
         {},
       );
 
+      // STATUS CODE DECORATOR
       const statusCodeMetadata = Reflect.getMetadata(
         HTTP_STATUS_CODE_METADATA,
         controller,

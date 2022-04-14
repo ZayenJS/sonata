@@ -1,4 +1,5 @@
 import { IncomingHttpHeaders, IncomingMessage } from 'http';
+import { RequestMethod } from '../enums/request-methods.enum';
 
 export class Request {
   private _body: URLSearchParams;
@@ -39,5 +40,13 @@ export class Request {
 
   public get headers() {
     return this._headers;
+  }
+
+  public get url() {
+    return this._request.url as string;
+  }
+
+  public get method() {
+    return this._request.method as RequestMethod;
   }
 }

@@ -3,6 +3,8 @@ import { HttpResponse } from '../http/Response';
 
 export abstract class AbstractController {
   protected json(data: any, status: number = HttpStatus.OK): HttpResponse {
+    if (!data) throw new Error('No data provided');
+
     if (typeof data !== 'object') {
       throw new Error('Data must be an object');
     }

@@ -49,8 +49,6 @@ export const getClassDependencies = (
   const constructorParamTypes = (Reflect.getMetadata('design:paramtypes', target) ||
     []) as Function[];
 
-  console.log({ constructorParamTypes });
-
   return constructorParamTypes
     .map((paramType, index) =>
       isClass(paramType) ? { class: paramType, index } : null,

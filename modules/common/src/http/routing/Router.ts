@@ -1,69 +1,55 @@
 import { RequestMethod } from '../../enums/request-methods.enum';
+import { Request } from '../Request';
+import { MatchedRoute } from './MatchedRoute';
+import { Route, RouteOptions } from './Route';
+import { MatchingRoute, RouteMatcher } from './RouteMatcher';
+import { RouterInterface } from './RouterInterface';
 
-interface RouteInitParams {
-  method: RequestMethod;
-  path: string;
-  handler: Function;
-  controller: any;
-}
+export class Router implements RouterInterface {
+  private _request?: Request;
+  private _routeMatcher: RouteMatcher = new RouteMatcher();
+  private _routes: Set<Route> = new Set();
 
-interface RouteOptions {
-  routeName: string;
-}
-
-export class Route {
-  private method: RequestMethod;
-  private path: string;
-  private handler: Function;
-  private routeName: string;
-  private controller: any;
-
-  constructor(params: RouteInitParams & RouteOptions) {
-    this.method = params.method;
-    this.path = params.path;
-    this.handler = params.handler;
-    this.routeName = params.routeName;
-    this.controller = params.controller;
+  public get routes() {
+    return this._routes;
   }
 
-  public getMethod() {
-    return this.method;
-  }
-
-  public getPath() {
-    return this.path;
-  }
-
-  public getHandler() {
-    return this.handler;
-  }
-
-  public getName() {
-    return this.routeName;
-  }
-
-  public getController() {
-    return this.controller;
-  }
-}
-
-export class Router {
-  private routes: Set<Route> = new Set();
-
-  constructor(routes?: Set<Route>) {
-    if (routes) {
-      this.routes = routes;
-    }
-  }
-
-  public getRoutes() {
-    return this.routes;
+  public set request(request: Request) {
+    this._request = request;
   }
 
   public addRoute(route: Route) {
-    this.routes.add(route);
+    this._routes.add(route);
 
     return this;
+  }
+
+  public getRoute(name: string): Route | undefined {
+    return [...this._routes].find((route: Route) => route.getName() === name);
+  }
+
+  public getRouteByPath(path: string): Route | undefined {
+    return [...this._routes].find((route: Route) => route.getPath() === path);
+  }
+
+  public get routesLength(): number {
+    return this._routes.size;
+  }
+
+  public getMatchingRoute(): MatchedRoute | null {
+    if (!this._request) {
+      throw new Error('Request is not set');
+    }
+
+    const matchingRoute = this._routeMatcher.match(this._request.url, this._request.method, [
+      ...this._routes,
+    ]);
+
+    if (matchingRoute) {
+      return new MatchedRoute(matchingRoute.route, matchingRoute.params);
+    }
+
+    return null;
   }
 
   public get(path: string, handler: Function, controller: any, options: RouteOptions): Router {
@@ -80,7 +66,12 @@ export class Router {
     return this;
   }
 
-  public post(path: string, handler: Function, controller: any, options: RouteOptions): Router {
+  public post(
+    path: string,
+    handler: Function,
+    controller: any,
+    options: RouteOptions,
+  ): Router {
     this.addRoute(
       new Route({
         method: RequestMethod.POST,
@@ -108,7 +99,12 @@ export class Router {
     return this;
   }
 
-  public patch(path: string, handler: Function, controller: any, options: RouteOptions): Router {
+  public patch(
+    path: string,
+    handler: Function,
+    controller: any,
+    options: RouteOptions,
+  ): Router {
     this.addRoute(
       new Route({
         method: RequestMethod.PATCH,
@@ -122,7 +118,12 @@ export class Router {
     return this;
   }
 
-  public delete(path: string, handler: Function, controller: any, options: RouteOptions): Router {
+  public delete(
+    path: string,
+    handler: Function,
+    controller: any,
+    options: RouteOptions,
+  ): Router {
     this.addRoute(
       new Route({
         method: RequestMethod.DELETE,
@@ -136,7 +137,12 @@ export class Router {
     return this;
   }
 
-  public options(path: string, handler: Function, controller: any, options: RouteOptions): Router {
+  public options(
+    path: string,
+    handler: Function,
+    controller: any,
+    options: RouteOptions,
+  ): Router {
     this.addRoute(
       new Route({
         method: RequestMethod.OPTIONS,
@@ -150,7 +156,12 @@ export class Router {
     return this;
   }
 
-  public head(path: string, handler: Function, controller: any, options: RouteOptions): Router {
+  public head(
+    path: string,
+    handler: Function,
+    controller: any,
+    options: RouteOptions,
+  ): Router {
     this.addRoute(
       new Route({
         method: RequestMethod.HEAD,

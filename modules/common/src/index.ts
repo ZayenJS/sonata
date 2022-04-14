@@ -14,8 +14,6 @@ export * from './enums/request-methods.enum';
 
 export default {
   createApp() {
-    app.create();
-
     const rootDir = FS.findRootDirectory();
     if (!rootDir) {
       throw new Error('Could not find package.json');
@@ -25,11 +23,7 @@ export default {
 
     const servicesDirectory = FS.search(/[sS]ervices?/, rootDir, 'directory');
 
-    const entityDirectory = FS.search(
-      /[eE]ntit[y|ies]|[mM]odels?/,
-      rootDir,
-      'directory',
-    );
+    const entityDirectory = FS.search(/[eE]ntit[y|ies]|[mM]odels?/, rootDir, 'directory');
 
     try {
       console.log({
@@ -40,13 +34,14 @@ export default {
 
       if (controllersDirectory)
         Registerer.load(controllersDirectory, InjectionType.CONTROLLER);
-      if (servicesDirectory)
-        Registerer.load(servicesDirectory, InjectionType.SERVICE);
+      if (servicesDirectory) Registerer.load(servicesDirectory, InjectionType.SERVICE);
       if (entityDirectory) Registerer.load(entityDirectory, InjectionType.ENTITY);
     } catch (e) {
       console.error(e);
       process.exit(1);
     }
+
+    app.create();
 
     return app;
   },

@@ -1,18 +1,13 @@
 import { RequestMethod } from '../../enums/request-methods.enum';
-import { Route as RouteClass } from '../../http/routing/Router';
+import { Route as RouteClass } from '../../http/routing/Route';
 import app from '../../App';
 import { extendMetadataArray, isClass } from '../../utils';
-import { InjectionContainer } from '../../Injection/InjectionContainer';
-import { InjectionType } from '../../enums/InjectionType';
 
 interface RouteOptions {
   methods: RequestMethod[];
 }
 
-export function Route(
-  path: string,
-  options: RouteOptions = { methods: [RequestMethod.ALL] },
-) {
+export function Route(path: string, options: RouteOptions = { methods: [RequestMethod.ALL] }) {
   return function (target: object, key: string, descriptor: PropertyDescriptor) {
     // TODO: Logging
     console.info(`Route ${path} registered`);
@@ -28,9 +23,7 @@ export function Route(
     // Gets the classes to be injected
 
     const classParams = Reflect.getMetadata('design:paramtypes', target, key)
-      .map((e: Function, i: number) =>
-        isClass(e) ? { parameterIndex: i, type: e } : null,
-      )
+      .map((e: Function, i: number) => (isClass(e) ? { parameterIndex: i, type: e } : null))
       .filter((e: any) => e);
 
     // console.log(classParams);
@@ -55,7 +48,7 @@ export function Route(
         routeName: key,
       });
 
-      app.router.addRoute(route);
+      app.router?.addRoute(route);
     }
   };
 }
