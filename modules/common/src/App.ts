@@ -1,4 +1,5 @@
 import http, { Server } from 'http';
+import path from 'path';
 import {
   BODY_PARAM_METADATA,
   DEPT_INJECTION_METADATA,
@@ -6,9 +7,11 @@ import {
   HTTP_STATUS_CODE_METADATA,
   QUERY_PARAM_METADATA,
   REDIRECT_METADATA,
+  RENDER_METADATA,
   ROUTE_PARAM_METADATA,
 } from './constants';
 import { HttpStatus } from './enums/http-status.enum';
+import { FS } from './Helpers/FS';
 import { RequestParser } from './Helpers/RequestParser';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
@@ -21,9 +24,16 @@ import { Constructor, InjectionContainer } from './Injection/InjectionContainer'
 export class App {
   private _router: Router;
   private _nodeServer: http.Server = new Server();
+  private config = new URLSearchParams({
+    views: `${FS.findRootDirectory()}/views`,
+  });
 
   constructor() {
     this._router = new Router();
+  }
+
+  public set(key: string, value: string) {
+    this.config.set(key, value);
   }
 
   public get router(): Router {
@@ -212,6 +222,8 @@ export class App {
 
       let endResponse = await routeHandler(...args);
 
+      response.status(statusCode).setHeaders(headers);
+
       // REDIRECT DECORATOR
       const redirectMetadata = Reflect.getMetadata(
         REDIRECT_METADATA,
@@ -219,14 +231,32 @@ export class App {
         matchingRoute.getName(),
       );
 
-      console.log({ redirectMetadata });
+      // RENDER DECORATOR
+      const renderMetadata = Reflect.getMetadata(
+        RENDER_METADATA,
+        controller,
+        matchingRoute.getName(),
+      );
+
+      if (renderMetadata) {
+        const templateName = renderMetadata;
+        const templatePath = path.join(this.config.get('views')!, templateName);
+
+        // if (!fs.existsSync(templatePath)) {
+        //   throw new Error(`${templatePath} not found`);
+        // }
+
+        // const templateContent = fs.readFileSync(templatePath, 'utf8');
+        // const templateEngine = new TemplateEngine(templateContent);
+
+        // endResponse = templateEngine.render(data);
+        return response.sendFile(templatePath);
+      }
 
       if (redirectMetadata) {
         response.redirect(redirectMetadata.url, redirectMetadata.statusCode);
         return;
       }
-
-      response.status(statusCode).setHeaders(headers);
 
       if (endResponse instanceof Object && !endResponse.headers) {
         endResponse = JSON.stringify(endResponse);

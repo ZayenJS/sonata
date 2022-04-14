@@ -10,12 +10,9 @@ import { RENDER_METADATA } from '../../constants';
  * @publicApi
  */
 export function Render(template: string): MethodDecorator {
-  return (
-    _target: object,
-    _key: string | symbol,
-    descriptor: TypedPropertyDescriptor<any>,
-  ) => {
-    Reflect.defineMetadata(RENDER_METADATA, template, descriptor.value);
+  return (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<any>) => {
+    Reflect.defineMetadata(RENDER_METADATA, template, target, key);
+
     return descriptor;
   };
 }

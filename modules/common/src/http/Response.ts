@@ -1,5 +1,6 @@
 import { ServerResponse, OutgoingHttpHeaders } from 'http';
 import { HttpStatus } from '../enums/http-status.enum';
+import fs from 'fs';
 
 export interface HttpResponse {
   status?: HttpStatus;
@@ -29,6 +30,13 @@ export class Response {
     this.status(status ?? HttpStatus.TEMPORARY_REDIRECT);
     this.setHeader('Location', url);
     this.send();
+  }
+
+  public render(template: string, data?: { [key: string]: any }) {}
+
+  public sendFile(filePath: string) {
+    this._res.writeHead(this._status, this._headers);
+    this._res.end(fs.readFileSync(filePath));
   }
 
   public status(status?: HttpStatus) {
