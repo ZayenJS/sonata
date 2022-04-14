@@ -1,5 +1,5 @@
 import { RequestMethod } from '../../enums/request-methods.enum';
-import { Router } from './Router';
+import { RequestParser } from '../../Helpers/RequestParser';
 
 export interface RouteInitParams {
   method: RequestMethod;
@@ -12,9 +12,9 @@ export interface RouteOptions {
   routeName: string;
 }
 
-export interface RouteParam {
-  name: string;
-  value: string | number;
+export interface URLParams {
+  queryParams: URLSearchParams;
+  routeParams: URLSearchParams;
 }
 
 export interface RouteInterface {
@@ -58,5 +58,11 @@ export class Route implements RouteInterface {
 
   public getController() {
     return this.controller;
+  }
+
+  public extractParams(url: string) {
+    console.log(this.path);
+
+    return RequestParser.parseURL(url, this);
   }
 }

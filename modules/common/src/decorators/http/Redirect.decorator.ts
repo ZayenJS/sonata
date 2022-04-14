@@ -6,16 +6,9 @@ import { HttpStatus } from '../../enums/http-status.enum';
  *
  * @publicApi
  */
-export function Redirect(
-  url = '',
-  statusCode: HttpStatus = HttpStatus.OK,
-): MethodDecorator {
-  return (
-    _target: object,
-    _key: string | symbol,
-    descriptor: TypedPropertyDescriptor<any>,
-  ) => {
-    Reflect.defineMetadata(REDIRECT_METADATA, { statusCode, url }, descriptor.value);
+export function Redirect(url = '', statusCode: HttpStatus = HttpStatus.OK): MethodDecorator {
+  return (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<any>) => {
+    Reflect.defineMetadata(REDIRECT_METADATA, { statusCode, url }, target, key);
     return descriptor;
   };
 }

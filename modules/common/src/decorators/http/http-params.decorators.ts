@@ -16,16 +16,16 @@ import { extendMetadataArray } from '../../utils';
  * async find(@Query('token') token: string)
  * ```
  *
- * @param name name of a single property to extract from the query parameters
+ * @param property name of a single property to extract from the query parameters
  *
  * @publicApi
  */
-export function Query(name: string): ParameterDecorator;
+export function Query(property: string): ParameterDecorator;
 export function Query(): ParameterDecorator;
-export function Query(name?: string): ParameterDecorator {
+export function Query(property?: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
     const metadata = {
-      name: name ?? null,
+      name: property ?? null,
       parameterIndex,
     };
 
@@ -42,16 +42,16 @@ export function Query(name?: string): ParameterDecorator {
  * async create(@Body() body: RequestBody)
  * ```
  *
- * @param name name of a single property to extract from the request body
+ * @param property name of a single property to extract from the request body
  *
  * @publicApi
  */
-export function Body(name: string): ParameterDecorator;
+export function Body(property: string): ParameterDecorator;
 export function Body(): ParameterDecorator;
-export function Body(name?: string): ParameterDecorator {
+export function Body(property?: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
     const metadata = {
-      name: name ?? null,
+      name: property ?? null,
       parameterIndex,
     };
 
@@ -76,12 +76,12 @@ export function Body(name?: string): ParameterDecorator {
  *
  * @publicApi
  */
-export function Param(): ParameterDecorator;
 export function Param(property: string): ParameterDecorator;
+export function Param(): ParameterDecorator;
 export function Param(property?: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol, parameterIndex: number) => {
     const metadata = {
-      property,
+      name: property ?? null,
       parameterIndex,
     };
 

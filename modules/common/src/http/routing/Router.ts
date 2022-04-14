@@ -1,8 +1,7 @@
 import { RequestMethod } from '../../enums/request-methods.enum';
 import { Request } from '../Request';
-import { MatchedRoute } from './MatchedRoute';
 import { Route, RouteOptions } from './Route';
-import { MatchingRoute, RouteMatcher } from './RouteMatcher';
+import { RouteMatcher } from './RouteMatcher';
 import { RouterInterface } from './RouterInterface';
 
 export class Router implements RouterInterface {
@@ -36,7 +35,7 @@ export class Router implements RouterInterface {
     return this._routes.size;
   }
 
-  public getMatchingRoute(): MatchedRoute | null {
+  public getMatchingRoute(): Route | null {
     if (!this._request) {
       throw new Error('Request is not set');
     }
@@ -46,7 +45,7 @@ export class Router implements RouterInterface {
     ]);
 
     if (matchingRoute) {
-      return new MatchedRoute(matchingRoute.route, matchingRoute.params);
+      return matchingRoute;
     }
 
     return null;

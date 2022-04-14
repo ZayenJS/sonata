@@ -5,14 +5,13 @@ import {
   HEADERS_METADATA,
   HTTP_STATUS_CODE_METADATA,
   QUERY_PARAM_METADATA,
+  REDIRECT_METADATA,
+  ROUTE_PARAM_METADATA,
 } from './constants';
 import { HttpStatus } from './enums/http-status.enum';
-import { RequestMethod } from './enums/request-methods.enum';
 import { RequestParser } from './Helpers/RequestParser';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
-import { MatchedRoute } from './http/routing/MatchedRoute';
-import { RouteMatcher } from './http/routing/RouteMatcher';
 
 import { Router } from './http/routing/Router';
 import { Constructor, InjectionContainer } from './Injection/InjectionContainer';
@@ -53,9 +52,6 @@ export class App {
 
   public create() {
     this._nodeServer = http.createServer(async (req, res) => {
-      const url = req.url;
-      const method = req.method;
-
       let incompleteRequest = false;
 
       if (!req.url) incompleteRequest = true;
@@ -79,7 +75,10 @@ export class App {
         return res.end('404');
       }
 
-      request.query = matchingRoute.extractQueryParams();
+      const { queryParams, routeParams } = matchingRoute.extractParams(request.url);
+
+      request.query = queryParams;
+      request.params = routeParams;
       request.body = await RequestParser.parseBody(req);
 
       this.registerMiddlewares();
@@ -88,7 +87,7 @@ export class App {
       const controller = matchingRoute.getController();
 
       // TODO: Get the position of the route param args with the use of the @Param() decorator
-      const args: unknown[] = [...matchingRoute.params.map(param => param.value)];
+      const args: unknown[] = [...request.params.values()];
 
       // QUERY PARAM DECORATOR
       const queryMetadata =
@@ -123,6 +122,16 @@ export class App {
         }
 
         args[bodyData.parameterIndex] = bodyParam;
+      }
+
+      // ROUTE PARAM DECORATOR
+      const routeParamMetadata =
+        Reflect.getMetadata(ROUTE_PARAM_METADATA, controller, matchingRoute.getName()) ?? [];
+
+      for (const routeParamData of routeParamMetadata) {
+        const routeParams = request.params;
+
+        args[routeParamData.parameterIndex] = routeParams.get(routeParamData.name);
       }
 
       // DEPENDENCY INJECTION
@@ -199,8 +208,23 @@ export class App {
       );
 
       const statusCode = statusCodeMetadata ?? 200;
+      console.log({ args });
 
       let endResponse = await routeHandler(...args);
+
+      // REDIRECT DECORATOR
+      const redirectMetadata = Reflect.getMetadata(
+        REDIRECT_METADATA,
+        controller,
+        matchingRoute.getName(),
+      );
+
+      console.log({ redirectMetadata });
+
+      if (redirectMetadata) {
+        response.redirect(redirectMetadata.url, redirectMetadata.statusCode);
+        return;
+      }
 
       response.status(statusCode).setHeaders(headers);
 

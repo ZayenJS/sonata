@@ -25,6 +25,12 @@ export class Response {
     this._res.end(data ?? this._data);
   }
 
+  public redirect(url: string, status?: HttpStatus) {
+    this.status(status ?? HttpStatus.TEMPORARY_REDIRECT);
+    this.setHeader('Location', url);
+    this.send();
+  }
+
   public status(status?: HttpStatus) {
     if (!status) return this;
 
