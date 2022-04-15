@@ -7,7 +7,7 @@ import {
 } from '../Injection/InjectionContainer';
 import { extendMetadataArray, getClassDependencies } from '../utils';
 
-export const Controller = (target: Constructor) => {
+export const Controller = (routePrefix?: string) => (target: Constructor) => {
   // const deps = getClassDependencies(target);
   // const metadata: InjectableMetadata = {
   //   type: InjectionType.CONTROLLER,
