@@ -1,63 +1,65 @@
-import http, { Server } from 'http';
-import path from 'path';
-import {
-  BODY_PARAM_METADATA,
-  DEPT_INJECTION_METADATA,
-  HEADERS_METADATA,
-  HTTP_STATUS_CODE_METADATA,
-  QUERY_PARAM_METADATA,
-  REDIRECT_METADATA,
-  RENDER_METADATA,
-  REQUEST_PARAM_METADATA,
-  ROUTE_PARAM_METADATA,
-} from './constants';
-import { HttpStatus } from './enums/http-status.enum';
 import { FS } from './Helpers/FS';
-import { RequestParser } from './Helpers/RequestParser';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
-
 import { Router } from './http/routing/Router';
-import { Constructor, InjectionContainer } from './Injection/InjectionContainer';
 
-// TODO: expose a wrapper of the App class to the outside world
+import { Server } from './Server';
+
+export interface AppConfig {
+  port?: number;
+  views?: string;
+  publicFolder?: string;
+}
 
 export class App {
+  private static _instance: App;
   private _router: Router;
-  private _nodeServer: http.Server = new Server();
-  private config = new URLSearchParams({
+  private _server: Server;
+  private _config = {
     views: `${FS.findRootDirectory()}/views`,
-  });
+    publicFolder: `${FS.findRootDirectory()}/public`,
+  };
 
-  constructor() {
-    this._router = new Router();
+  public get config() {
+    return this._config;
   }
 
-  public set(key: string, value: string) {
-    this.config.set(key, value);
+  public get router() {
+    return this._router;
+  }
+
+  public set(key: keyof AppConfig, value: any) {
+    //@ts-ignore
+    this._config[key] = value;
 
     return this;
   }
 
-  public get router(): Router {
-    return this._router;
+  public static getInstance(): App {
+    if (!this._instance) {
+      this._instance = new App();
+    }
+
+    return this._instance;
   }
 
-  private set router(router: Router) {
-    this._router = router;
+  private constructor() {
+    this._router = new Router();
+    this._server = new Server(this._router);
   }
-
-  private _notFoundCallback?: (request: Request, response: Response) => void;
-  private _catchAllCallback?: (request: Request, response: Response, message?: string) => void;
-  private _serverErrorCallback?: (request: Request, response: Response, error: string) => void;
 
   public registerMiddlewares() {}
+
+  public create() {
+    this._server.create();
+    return this;
+  }
 
   public listen(): this;
   public listen(port: number): this;
   public listen(port: number, callback: () => void): this;
   public listen(port: number = 5000, callback?: () => void) {
-    this._nodeServer.listen(port, () => {
+    this._server.nodeServer.listen(port, () => {
       // TODO: logging stuff...
       console.info(`Server is listening on port ${port}`);
 
@@ -67,292 +69,27 @@ export class App {
     return this;
   }
 
-  public create() {
-    this._nodeServer = http.createServer(async (req, res) => {
-      const request = new Request(req);
-      const response = new Response(res) as Response;
-
-      try {
-        let incompleteRequest = false;
-
-        if (!req.url) incompleteRequest = true;
-        if (!req.method) incompleteRequest = true;
-        // throw new Error('test');
-        if (incompleteRequest) {
-          return response.status(HttpStatus.BAD_REQUEST).send('Incomplete request');
-        }
-      } catch (e) {
-        console.error(e);
-        const errorMessage = e instanceof Error ? e.message : 'Internal Server Error';
-
-        if (this._catchAllCallback)
-          return this._catchAllCallback(request, response, errorMessage);
-
-        if (this._serverErrorCallback) {
-          return this._serverErrorCallback(request, response, errorMessage);
-        }
-
-        return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Internal server error');
-      }
-
-      try {
-        this.router.request = request;
-
-        const matchingRoute = this.router.getMatchingRoute();
-
-        if (!this.router.routesLength || !matchingRoute) {
-          if (this._catchAllCallback) return this._catchAllCallback(request, response);
-          if (this._notFoundCallback) return this._notFoundCallback(request, response);
-
-          res.writeHead(404);
-          return res.end('404');
-        }
-
-        const { queryParams, routeParams } = matchingRoute.extractParams(request.url);
-
-        request.query = queryParams;
-        request.params = routeParams;
-        request.body = await RequestParser.parseBody(req);
-
-        this.registerMiddlewares();
-
-        const routeHandler = matchingRoute.getHandler();
-        const controller = matchingRoute.getController();
-
-        // TODO: Get the position of the route param args with the use of the @Param() decorator
-        const args: unknown[] = [...request.params.values()];
-
-        // QUERY PARAM DECORATOR
-        const queryMetadata =
-          Reflect.getMetadata(QUERY_PARAM_METADATA, controller, matchingRoute.getName()) ?? [];
-
-        for (const queryData of queryMetadata) {
-          let queryParam: any = request.query.get(queryData.name);
-          if (!queryData.name) {
-            queryParam = {};
-
-            request.query.forEach((value, key) => {
-              queryParam[key] = value;
-            });
-          }
-
-          args[queryData.parameterIndex] = queryParam;
-        }
-
-        // BODY PARAM DECORATOR
-        const bodyMetadata =
-          Reflect.getMetadata(BODY_PARAM_METADATA, controller, matchingRoute.getName()) ?? [];
-
-        for (const bodyData of bodyMetadata) {
-          let bodyParam: any = request.body.get(bodyData.name);
-
-          if (!bodyData.name) {
-            bodyParam = {};
-
-            request.body.forEach((value, key) => {
-              bodyParam[key] = value;
-            });
-          }
-
-          args[bodyData.parameterIndex] = bodyParam;
-        }
-
-        // ROUTE PARAM DECORATOR
-        const routeParamMetadata =
-          Reflect.getMetadata(ROUTE_PARAM_METADATA, controller, matchingRoute.getName()) ?? [];
-
-        for (const routeParamData of routeParamMetadata) {
-          const routeParams = request.params;
-
-          args[routeParamData.parameterIndex] = routeParams.get(routeParamData.name);
-        }
-
-        // // REQ DECORATOR
-        // const reqMetadata = Reflect.getMetadata(
-        //   REQUEST_PARAM_METADATA,
-        //   controller,
-        //   matchingRoute.getName(),
-        // );
-
-        // console.log({ reqMetadata });
-        // if (reqMetadata) {
-        //   args[reqMetadata.parameterIndex] = request;
-        // }
-
-        // DEPENDENCY INJECTION
-        const deptInjectionMetadata =
-          Reflect.getMetadata(DEPT_INJECTION_METADATA, controller, matchingRoute.getName()) ??
-          [];
-
-        // TODO: refactor DI and create a method in the DI container (possibly recursive...)
-        //#region DI
-        for (const deptInjectionData of deptInjectionMetadata) {
-          if (deptInjectionData.type.name.toLowerCase() === 'request') {
-            args[deptInjectionData.parameterIndex] = request;
-            continue;
-          } else if (deptInjectionData.type.name.toLowerCase() === 'response') {
-            args[deptInjectionData.parameterIndex] = response;
-            continue;
-          }
-
-          const classToInject = InjectionContainer.getInstance().find(
-            deptInjectionData.type.name,
-          );
-
-          if (!classToInject) {
-            throw new Error(`${deptInjectionData.type.name} not found`);
-          }
-
-          const formedDeps = [];
-
-          for (const dep of classToInject.deps) {
-            const depClass = InjectionContainer.getInstance().find(
-              (dep as unknown as Function).name,
-            );
-
-            if (!depClass) continue;
-
-            const classDeps = [];
-            if (depClass?.deps.length) {
-              classDeps.push(...depClass.deps.map(d => new (d as unknown as Constructor)()));
-            }
-
-            formedDeps.push(new depClass.target(...classDeps));
-          }
-
-          args[deptInjectionData.parameterIndex] = new classToInject.target(...formedDeps);
-
-          //#endregion DI
-        }
-
-        // console.log({
-        //   queryMetadata,
-        //   bodyMetadata,
-        //   deptInjectionMetadata,
-        //   returnType: Reflect.getMetadata(
-        //     'design:returntype',
-        //     controller,
-        //     matchingRoute.getName(),
-        //   ).name,
-        //   args,
-        // });
-
-        // HEADER DECORATOR
-        const headersMetadata = Reflect.getMetadata(
-          HEADERS_METADATA,
-          controller,
-          matchingRoute.getName(),
-        );
-
-        const headers = headersMetadata?.reduce(
-          (acc: { [key: string]: string }, header: { [key: string]: string }) => {
-            acc[header.name] = header.value;
-            return acc;
-          },
-          {},
-        );
-
-        // STATUS CODE DECORATOR
-        const statusCodeMetadata = Reflect.getMetadata(
-          HTTP_STATUS_CODE_METADATA,
-          controller,
-          matchingRoute.getName(),
-        );
-
-        const statusCode = statusCodeMetadata ?? 200;
-        console.log({ args });
-
-        let endResponse = await routeHandler(...args);
-
-        response.status(statusCode).setHeaders(headers);
-
-        // REDIRECT DECORATOR
-        const redirectMetadata = Reflect.getMetadata(
-          REDIRECT_METADATA,
-          controller,
-          matchingRoute.getName(),
-        );
-
-        // RENDER DECORATOR
-        const renderMetadata = Reflect.getMetadata(
-          RENDER_METADATA,
-          controller,
-          matchingRoute.getName(),
-        );
-
-        if (renderMetadata) {
-          const templateName = renderMetadata;
-          const templatePath = path.join(this.config.get('views')!, templateName);
-
-          // if (!fs.existsSync(templatePath)) {
-          //   throw new Error(`${templatePath} not found`);
-          // }
-
-          // const templateContent = fs.readFileSync(templatePath, 'utf8');
-          // const templateEngine = new TemplateEngine(templateContent);
-
-          // endResponse = templateEngine.render(data);
-          return response.sendFile(templatePath);
-        }
-
-        if (redirectMetadata) {
-          response.redirect(redirectMetadata.url, redirectMetadata.statusCode);
-          return;
-        }
-
-        if (endResponse instanceof Object && !endResponse.headers) {
-          endResponse = JSON.stringify(endResponse);
-          response.setHeader('Content-Type', 'application/json');
-        } else if (endResponse instanceof Object && endResponse.headers) {
-          response.setHeaders(endResponse.headers);
-          endResponse = endResponse.body;
-        }
-
-        console.log(endResponse);
-
-        return response.send(endResponse);
-      } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : 'Internal Server Error';
-
-        if (this._catchAllCallback)
-          return this._catchAllCallback(request, response, errorMessage);
-
-        if (this._serverErrorCallback) {
-          return this._serverErrorCallback(request, response, errorMessage);
-        }
-
-        return response.status(500).send('Internal Server Error');
-      }
-    });
-  }
-
   public catchAll(callback: (request: Request, response: Response, message?: string) => void) {
-    this._catchAllCallback = callback;
+    this._server.catchAllCallback = callback;
 
     return this;
   }
 
   public notFound(callback: (request: Request, response: Response) => void) {
-    this._notFoundCallback = callback;
+    this._server.notFoundCallback = callback;
 
     return this;
   }
 
   public serverError(callback: (request: Request, response: Response, error: string) => void) {
-    this._serverErrorCallback = callback;
+    this._server.serverErrorCallback = callback;
 
     return this;
   }
 
   public get nodeServer() {
-    return this._nodeServer;
-  }
-
-  public addInjectable(type: string, element: object) {
-    // add to the dependency injection container
-
-    return this;
+    return this._server.nodeServer;
   }
 }
 
-export default new App();
+export default App.getInstance();

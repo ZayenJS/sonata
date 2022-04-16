@@ -2,6 +2,7 @@ import { RequestMethod } from '../../enums/request-methods.enum';
 import { Route as RouteClass } from '../../http/routing/Route';
 import app from '../../App';
 import { extendMetadataArray, isClass } from '../../utils';
+import { Logger } from '../../Helpers/Logger';
 
 interface RouteOptions {
   methods: RequestMethod[];
@@ -13,9 +14,7 @@ export function Route(path: string, options: RouteOptions = { methods: [RequestM
     console.info(`Route ${path} registered`);
     const originalMethod = descriptor.value;
 
-    descriptor.value = function (...args: any[]) {
-      return originalMethod.apply(target, args);
-    };
+    descriptor.value = (...args: any[]) => originalMethod.apply(target, args);
 
     // console.log(Reflect.getMetadata('design:type', target, key));
 

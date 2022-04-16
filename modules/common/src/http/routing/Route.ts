@@ -61,8 +61,6 @@ export class Route implements RouteInterface {
   }
 
   public extractParams(url: string) {
-    console.log(this.path);
-
     return RequestParser.parseURL(url, this);
   }
 }

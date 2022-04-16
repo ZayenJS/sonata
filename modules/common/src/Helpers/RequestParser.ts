@@ -1,14 +1,23 @@
 import http from 'http';
+import { GenericStringObject } from '../@types';
 import { Route } from '../http/routing/Route';
 
 export class RequestParser {
   public static async parseBody(req: http.IncomingMessage) {
     const parsedBody = await RequestParser._parseBody(req);
-    const body = new URLSearchParams(parsedBody);
-    body.forEach((_, key) => {
-      if (!key) {
-        body.delete(key);
+    const URLSearchParamsBody = new URLSearchParams(parsedBody);
+
+    const body: GenericStringObject = {};
+
+    URLSearchParamsBody.forEach((value, key) => {
+      const trimedKey = key.trim();
+      const trimedValue = value.trim();
+
+      if (!trimedKey || !trimedValue) {
+        return;
       }
+
+      body[trimedKey] = trimedValue;
     });
 
     return body;
@@ -28,19 +37,28 @@ export class RequestParser {
     });
   }
 
-  private static parseQuery = (url: string): URLSearchParams => {
+  private static parseQuery = (url: string) => {
     const parsedUrl = url.split('?')?.[1];
 
-    return parsedUrl ? new URLSearchParams(parsedUrl) : new URLSearchParams();
+    const URLSearchParamsQuery = new URLSearchParams(parsedUrl);
+    const query: GenericStringObject = {};
+
+    URLSearchParamsQuery.forEach((value, key) => {
+      query[key.trim()] = value.trim();
+    });
+
+    return query;
   };
-  private static parseRouteParams(path: string, routePath: string): URLSearchParams {
-    const routeParams = new URLSearchParams();
+  private static parseRouteParams(path: string, routePath: string) {
+    const routeParams: GenericStringObject = {};
     const routeParamsKeys = routePath.split('/').filter(Boolean);
     const urlParamsKeys = path.split('/').filter(Boolean);
 
     routeParamsKeys.forEach((key, index) => {
-      if (key.startsWith(':')) {
-        routeParams.append(key.slice(1), urlParamsKeys[index]);
+      const trimedKey = key.trim();
+
+      if (trimedKey.startsWith(':')) {
+        routeParams[trimedKey.slice(1)] = urlParamsKeys[index];
       }
     });
 

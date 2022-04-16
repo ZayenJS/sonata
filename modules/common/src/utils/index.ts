@@ -31,27 +31,25 @@ export function extendMetadataArray<T extends Array<unknown>>(
   Reflect.defineMetadata(key, value, target, propertyKey);
 }
 
-export const isClass = (fn: Function) =>
-  ![
-    'Number',
-    'String',
-    'Boolean',
-    'Set',
-    'Map',
-    'Array',
-    'Object',
-    'Function',
-  ].includes(fn.name);
+export const isNumberish = (value: unknown): value is number =>
+  typeof value === 'number' ||
+  value instanceof Number ||
+  (typeof value === 'string' && !isNaN(+value)) ||
+  (value instanceof String && !isNaN(+value));
 
-export const getClassDependencies = (
-  target: Function,
-): InjectableDependencyMetadata[] => {
+export const isClass = (fn: Function) =>
+  !['Number', 'String', 'Boolean', 'Set', 'Map', 'Array', 'Object', 'Function'].includes(
+    fn.name,
+  );
+
+export const getClassDependencies = (target: Function): InjectableDependencyMetadata[] => {
   const constructorParamTypes = (Reflect.getMetadata('design:paramtypes', target) ||
     []) as Function[];
 
   return constructorParamTypes
-    .map((paramType, index) =>
-      isClass(paramType) ? { class: paramType, index } : null,
-    )
+    .map((paramType, index) => (isClass(paramType) ? { class: paramType, index } : null))
     .filter(x => x) as InjectableDependencyMetadata[];
 };
+
+export const isRedirectStatus = (status: number): boolean =>
+  status === 301 || status === 302 || status === 303 || status === 307;

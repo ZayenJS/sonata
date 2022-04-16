@@ -1,4 +1,17 @@
+import { GenericObject } from '../@types';
+import {
+  BODY_PARAM_METADATA,
+  DEPT_INJECTION_METADATA,
+  HEADERS_METADATA,
+  HTTP_STATUS_CODE_METADATA,
+  QUERY_PARAM_METADATA,
+  ROUTE_PARAM_METADATA,
+} from '../constants';
 import { InjectionType } from '../enums/InjectionType';
+import { Logger } from '../Helpers/Logger';
+import { Request } from '../http/Request';
+import { Response } from '../http/Response';
+import { isNumberish } from '../utils';
 
 /**
  * InjectionContainer class
@@ -32,6 +45,10 @@ interface Injectable {
   target: Constructor;
 }
 
+interface InjectionContainerStore {
+  toBeInjectedParams: unknown[];
+}
+
 type InjectablesMap = {
   [key in InjectionType]: Map<string, Injectable>;
 };
@@ -39,11 +56,21 @@ type InjectablesMap = {
 export class InjectionContainer {
   private static _instance?: InjectionContainer;
   private _injectables: InjectablesMap = {
-    [InjectionType.CLASS]: new Map(),
+    [InjectionType.REPOSITORY]: new Map(),
     [InjectionType.CONTROLLER]: new Map(),
     [InjectionType.SERVICE]: new Map(),
     [InjectionType.ENTITY]: new Map(),
   };
+
+  private _store: InjectionContainerStore = {
+    toBeInjectedParams: [],
+  };
+
+  public set(key: string, value: any) {
+    this._store[key as keyof InjectionContainerStore] = value;
+
+    return this;
+  }
 
   private constructor() {}
 
@@ -141,9 +168,7 @@ export class InjectionContainer {
   }
 
   public entries(): [string, Map<string, InjectableMetadata>][];
-  public entries(
-    type: InjectionType,
-  ): IterableIterator<[string, InjectableMetadata]>;
+  public entries(type: InjectionType): IterableIterator<[string, InjectableMetadata]>;
   public entries(type?: InjectionType) {
     if (type) {
       return this._injectables[type].entries();
@@ -154,5 +179,155 @@ export class InjectionContainer {
 
   public getInjectables() {
     return this._injectables;
+  }
+
+  public getInjectable(type: InjectionType, name: string) {
+    return this._injectables[type].get(name);
+  }
+
+  public getInjectableNames(type: InjectionType) {
+    return this._injectables[type].keys();
+  }
+
+  public getInjectableTypes() {
+    return Object.keys(this._injectables);
+  }
+
+  public getInjectableArgs() {
+    const injectableArgs = this._store.toBeInjectedParams.map(param => {
+      if (isNumberish(param)) {
+        return +param;
+      }
+
+      return param;
+    });
+
+    return injectableArgs;
+  }
+
+  public injectQueryParams(request: Request, target: object, propertyKey: string) {
+    const queryMetadata = Reflect.getMetadata(QUERY_PARAM_METADATA, target, propertyKey) ?? [];
+
+    for (const queryData of queryMetadata) {
+      let queryParam: any = request.query[queryData.name];
+
+      if (!queryData.name) {
+        queryParam = {};
+
+        Object.entries(request.query).forEach(([key, value]) => {
+          queryParam[key] = value;
+        });
+      }
+
+      this._store.toBeInjectedParams[queryData.parameterIndex] = queryParam;
+    }
+
+    return this;
+  }
+
+  public injectBodyParams(request: Request, target: object, propertyKey: string) {
+    const bodyMetadata = Reflect.getMetadata(BODY_PARAM_METADATA, target, propertyKey) ?? [];
+
+    for (const bodyData of bodyMetadata) {
+      let bodyParam: any = request.body[bodyData.name];
+
+      if (!bodyData.name) {
+        bodyParam = {};
+
+        Object.entries(request.body).forEach(([key, value]) => {
+          bodyParam[key] = value;
+        });
+      }
+
+      this._store.toBeInjectedParams[bodyData.parameterIndex] = bodyParam;
+    }
+
+    return this;
+  }
+
+  public injectRouteParams(request: Request, target: object, propertyKey: string) {
+    const routeParamMetadata =
+      Reflect.getMetadata(ROUTE_PARAM_METADATA, target, propertyKey) ?? [];
+
+    for (const routeParamData of routeParamMetadata) {
+      const routeParams = request.params;
+
+      this._store.toBeInjectedParams[routeParamData.parameterIndex] =
+        routeParams[routeParamData.name];
+    }
+
+    return this;
+  }
+
+  public getHeadersMetadata(request: Request, target: object, propertyKey: string) {
+    const headersMetadata = Reflect.getMetadata(HEADERS_METADATA, target, propertyKey);
+
+    return headersMetadata?.reduce(
+      (acc: { [key: string]: string }, header: { [key: string]: string }) => {
+        acc[header.name] = header.value;
+        return acc;
+      },
+      {},
+    );
+  }
+
+  public getStatusCodeMetadata(target: object, propertyKey: string) {
+    const statusCodeMetadata = Reflect.getMetadata(
+      HTTP_STATUS_CODE_METADATA,
+      target,
+      propertyKey,
+    );
+
+    return statusCodeMetadata ?? 200;
+  }
+
+  public injectDependencies(
+    request: Request,
+    response: Response,
+    target: object,
+    propertyKey: string,
+  ) {
+    const deptInjectionMetadata =
+      Reflect.getMetadata(DEPT_INJECTION_METADATA, target, propertyKey) ?? [];
+
+    // TODO: refactor DI and create a method in the DI container (possibly recursive...)
+    //#region DI
+    for (const deptInjectionData of deptInjectionMetadata) {
+      if (deptInjectionData.type.name.toLowerCase() === 'request') {
+        this._store.toBeInjectedParams[deptInjectionData.parameterIndex] = request;
+        continue;
+      } else if (deptInjectionData.type.name.toLowerCase() === 'response') {
+        this._store.toBeInjectedParams[deptInjectionData.parameterIndex] = response;
+        continue;
+      }
+
+      const classToInject = InjectionContainer.getInstance().find(deptInjectionData.type.name);
+
+      if (!classToInject) {
+        throw new Error(`${deptInjectionData.type.name} not found`);
+      }
+
+      const formedDeps = [];
+
+      for (const dep of classToInject.deps) {
+        const depClass = InjectionContainer.getInstance().find(
+          (dep as unknown as Function).name,
+        );
+
+        if (!depClass) continue;
+
+        const classDeps = [];
+        if (depClass?.deps.length) {
+          classDeps.push(...depClass.deps.map(d => new (d as unknown as Constructor)()));
+        }
+
+        formedDeps.push(new depClass.target(...classDeps));
+      }
+
+      this._store.toBeInjectedParams[deptInjectionData.parameterIndex] =
+        new classToInject.target(...formedDeps);
+
+      //#endregion DI
+    }
   }
 }

@@ -1,19 +1,15 @@
 {
   "name": "@sonata/common",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "",
   "main": "dist/index.js",
-  "scripts": {
-    "build:dev": "tsc && npm link",
-    "build:watch": "tsc -w"
-  },
+  "scripts": {},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "reflect-metadata": "^0.1.13",
     "@types/node": "^17.0.23"
   },
-  "dependencies": {
-    "reflect-metadata": "^0.1.13"
-  }
+  "dependencies": {}
 }

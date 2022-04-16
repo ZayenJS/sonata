@@ -1,4 +1,5 @@
 import { RequestMethod } from '../../enums/request-methods.enum';
+import { Logger } from '../../Helpers/Logger';
 import { Route } from './Route';
 import { RouteMatcherInterface } from './RouteMatcherInterface';
 
@@ -6,16 +7,19 @@ export class RouteMatcher implements RouteMatcherInterface {
   public constructor() {}
 
   public match(path: string, method: RequestMethod, routes: Route[]): Route | null {
-    console.log(`RouteMatcher.match()`);
-    console.log(`path: ${path}`);
-    console.log(`method: ${method}`);
-
+    const pathWithoutQueryString = path.split('?')[0];
     for (const route of routes) {
-      const isSameRoute = this.isSameRoute(route, path, method);
+      const isSameRoute = this.isSameRoute(route, pathWithoutQueryString, method);
 
       if (!isSameRoute) {
         continue;
       }
+
+      Logger.getInstance().custom(
+        'RouteMatcher',
+        __line,
+        `Matching path ${path} with method ${method}`,
+      );
 
       return route;
     }

@@ -1,6 +1,8 @@
 import { ServerResponse, OutgoingHttpHeaders } from 'http';
 import { HttpStatus } from '../enums/http-status.enum';
 import fs from 'fs';
+import { CookieOptions } from './Cookie';
+import { isRedirectStatus } from '../utils';
 
 export interface HttpResponse {
   status?: HttpStatus;
@@ -15,6 +17,7 @@ export class Response {
   };
   private _headers: OutgoingHttpHeaders = {};
   private _data: string = '';
+  private _cookies: { [key: string]: string } = {};
 
   constructor(private _res: ServerResponse, data?: string) {
     this._data = data ?? '';
@@ -26,17 +29,19 @@ export class Response {
     this._res.end(data ?? this._data);
   }
 
-  public redirect(url: string, status?: HttpStatus) {
-    this.status(status ?? HttpStatus.TEMPORARY_REDIRECT);
-    this.setHeader('Location', url);
-    this.send();
-  }
-
   public render(template: string, data?: { [key: string]: any }) {}
 
   public sendFile(filePath: string) {
     this._res.writeHead(this._status, this._headers);
     this._res.end(fs.readFileSync(filePath));
+  }
+
+  public redirect(url: string, status?: HttpStatus) {
+    const redirectStatus =
+      status && isRedirectStatus(status) ? status : HttpStatus.TEMPORARY_REDIRECT;
+    this.status(redirectStatus);
+    this.setHeader('Location', url);
+    this.send();
   }
 
   public status(status?: HttpStatus) {
@@ -50,7 +55,53 @@ export class Response {
     throw new Error(`${status} is not a valid status code`);
   }
 
-  public setHeader(name?: string, value?: string) {
+  public get headers(): OutgoingHttpHeaders {
+    return this._headers;
+  }
+
+  public get statusCode() {
+    return this._status;
+  }
+
+  public get cookies() {
+    return this._cookies;
+  }
+
+  public getCookie(name: string) {
+    return this._cookies[name];
+  }
+
+  public setCookie(name: string, value: string, options?: CookieOptions) {
+    this._cookies[name] = `${name}=${value}; ${this._getCookieOptions(options)}`;
+
+    this.setHeader('Set-Cookie', Object.values(this._cookies));
+
+    return this;
+  }
+
+  private _getCookieOptions(options?: CookieOptions) {
+    if (!options) return '';
+
+    const cookieOptions = [];
+
+    for (const key in options) {
+      const value = options[key as keyof CookieOptions];
+
+      if (options.hasOwnProperty(key)) {
+        cookieOptions.push(`${key}=${value}`);
+      }
+    }
+
+    return cookieOptions.join('; ');
+  }
+
+  public deleteCookie(name: string) {
+    this.setCookie(name, '', {
+      expires: new Date(0),
+    });
+  }
+
+  public setHeader(name?: string, value?: string | string[]) {
     if (!name || !value) return this;
 
     if (!this._headers) this._headers = {};
