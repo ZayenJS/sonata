@@ -11,9 +11,9 @@ import { Request } from './http/Request';
 import { Response } from './http/Response';
 import { Router } from './http/routing/Router';
 import { InjectionContainer } from './Injection/InjectionContainer';
-import { Logger } from './Helpers/Logger';
 import { Session } from './http/Session';
-import { isRedirectStatus } from './utils';
+import { config } from './Config/Config';
+import { FS } from './Helpers/FS';
 
 export class Server {
   private static _created = false;
@@ -56,9 +56,16 @@ export class Server {
       );
     }
 
+    const rootDirectory = FS.findApplicationDirectory();
+
     this._nodeServer = http.createServer(async (req, res) => {
       const request = new Request(req) as Request;
       const response = new Response(res) as Response;
+
+      if (!rootDirectory) {
+        logger.custom('Server', __line, 'Root directory not found');
+        return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Internal server error');
+      }
 
       const sessionName = request.session.name;
       const cookies = request.cookies;
@@ -76,7 +83,6 @@ export class Server {
       }
 
       logger.custom('Server', __line, `Request: ${request.url}`);
-      logger.custom('Server', __line, request);
 
       try {
         let incompleteRequest = false;
@@ -101,6 +107,19 @@ export class Server {
         return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Internal server error');
       }
 
+      // handle css files
+      if (request.url.endsWith('.css')) {
+        const cssFilePath = path.join(config.getData().publicFolder, request.url);
+        return response.setHeader('Content-Type', 'text/css').sendFile(cssFilePath);
+      }
+
+      if (request.url.endsWith('.js')) {
+        const jsFilePath = path.join(config.getData().publicFolder, request.url);
+        return response
+          .setHeader('Content-Type', 'application/javascript')
+          .sendFile(jsFilePath);
+      }
+
       try {
         this.router.request = request;
 
@@ -110,7 +129,8 @@ export class Server {
           if (this._catchAllCallback) return this._catchAllCallback(request, response);
           if (this._notFoundCallback) return this._notFoundCallback(request, response);
 
-          res.writeHead(404);
+          // TODO: send custom Sonata error page
+          res.writeHead(HttpStatus.NOT_FOUND);
           return res.end('404');
         }
 
@@ -168,8 +188,9 @@ export class Server {
 
         if (renderMetadata) {
           const templateName = renderMetadata;
+          const templatePath = path.join(config.get('views') as string, templateName);
 
-          return response.sendFile(templateName);
+          return response.sendFile(templatePath);
         }
 
         if (redirectMetadata) {
@@ -227,8 +248,8 @@ export class Server {
   public listen(): this;
   public listen(port: number): this;
   public listen(port: number, callback: () => void): this;
-  public listen(port: number = 5000, callback?: () => void) {
-    this._nodeServer.listen(port, () => {
+  public listen(port?: number, callback?: () => void) {
+    this._nodeServer.listen(port ?? config.getData().port, () => {
       // TODO: logging stuff...
       console.info(`Server is listening on port ${port}`);
 

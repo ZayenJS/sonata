@@ -1,10 +1,19 @@
 import path from 'path';
 import fs from 'fs';
 
-interface FSSearchOptions {}
-
+// TODO: catch ENOTDIR error for not found directories
 export class FS {
-  public static findRootDirectory(): string | void {
+  public static findRootDirectory(): string {
+    const basePath = this.findApplicationDirectory();
+
+    if (!basePath) {
+      throw new Error('Could not find application directory');
+    }
+
+    return path.dirname(basePath);
+  }
+
+  public static findApplicationDirectory(): string | void {
     const mainFilePath = require.main?.filename;
 
     if (!mainFilePath) {

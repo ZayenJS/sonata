@@ -14,6 +14,7 @@ import {
 } from '@sonata/common';
 import { GenericStringObject } from '@sonata/common/dist/@types';
 import { User } from '../Entity/User';
+import { UserRepository } from '../Repository/UserRepository';
 import { I18N } from '../Services/I18N';
 
 @Controller()
@@ -41,10 +42,10 @@ export default class MainController extends AbstractController {
   }
 
   @Route('/login', { methods: [RequestMethod.POST] })
-  public async loginPost(@Body() body: GenericStringObject) {
+  public async loginPost(@Body() body: GenericStringObject, userRepo: UserRepository) {
     const { email, password } = body;
 
-    const user = await User.findOne(email);
+    const user = await userRepo.findOne(email);
 
     if (!user) {
       return this.response.status(HttpStatus.UNAUTHORIZED).render('auth/login.html');

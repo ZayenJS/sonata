@@ -37,12 +37,9 @@ export class Response {
 
   public render(template: string, data?: { [key: string]: any }) {}
 
-  public sendFile(pathFromViews: string) {
+  public sendFile(filePath: string) {
     if (!this._responseSent) {
       this._responseSent = true;
-
-      const viewsPath = config.get('views') as string;
-      const filePath = path.join(viewsPath, pathFromViews);
 
       this._res.writeHead(this._status, this._headers);
       this._res.end(fs.readFileSync(filePath));

@@ -46,7 +46,7 @@ Object.defineProperty(global, '__line', {
 
 export default {
   createApp() {
-    const rootDir = FS.findRootDirectory();
+    const rootDir = FS.findApplicationDirectory();
     if (!rootDir) {
       throw new Error('Could not find package.json');
     }
@@ -54,14 +54,14 @@ export default {
     const servicesDirectory = FS.search(/[sS]ervices?/, rootDir, 'directory');
     const controllersDirectory = FS.search(/[cC]ontrollers?/, rootDir, 'directory');
     const entityDirectory = FS.search(/[eE]ntit[y|ies]|[mM]odels?/, rootDir, 'directory');
-    const repositoryDirectory = FS.search(/[rR]epositor[y|ies]?/, rootDir, 'directory');
+    // const repositoryDirectory = FS.search(/[rR]epositor[y|ies]?/, rootDir, 'directory');
 
     try {
       if (controllersDirectory)
         Registerer.load(controllersDirectory, InjectionType.CONTROLLER);
       if (servicesDirectory) Registerer.load(servicesDirectory, InjectionType.SERVICE);
       if (entityDirectory) Registerer.load(entityDirectory, InjectionType.ENTITY);
-      if (repositoryDirectory) Registerer.load(repositoryDirectory, InjectionType.REPOSITORY);
+      // if (repositoryDirectory) Registerer.load(repositoryDirectory, InjectionType.REPOSITORY);
     } catch (e) {
       console.error(e);
       process.exit(1);
