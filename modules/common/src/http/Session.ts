@@ -1,12 +1,10 @@
 import { randomUUID, createHash } from 'crypto';
 import { GenericObject } from '../@types';
 
-interface User {}
-
 export class Session {
   private _id: string = randomUUID();
   private _name: string = 'SONATA_SESSID';
-  private _user?: User;
+  private _user?: any;
   private _token: string = '';
   private _createdAt: Date = new Date();
   private _updatedAt: Date = new Date();
@@ -40,7 +38,7 @@ export class Session {
   }
 
   public getStore<T>(): T | GenericObject {
-    return this.storeToObject() as T | GenericObject;
+    return this.storeToObject();
   }
 
   public add(key: string, value: unknown) {
@@ -66,8 +64,14 @@ export class Session {
     return this._name;
   }
 
-  public get user(): User | undefined {
+  public get user(): any | undefined {
     return this._user;
+  }
+
+  public set user(user: any) {
+    this._user = user;
+
+    this.save();
   }
 
   public get token(): string {

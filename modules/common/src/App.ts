@@ -1,36 +1,25 @@
-import { FS } from './Helpers/FS';
+import { config, ConfigInterface } from './Config/Config';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
 import { Router } from './http/routing/Router';
 
 import { Server } from './Server';
 
-export interface AppConfig {
-  port?: number;
-  views?: string;
-  publicFolder?: string;
-}
-
 export class App {
   private static _instance: App;
   private _router: Router;
   private _server: Server;
-  private _config = {
-    views: `${FS.findRootDirectory()}/views`,
-    publicFolder: `${FS.findRootDirectory()}/public`,
-  };
 
   public get config() {
-    return this._config;
+    return config;
   }
 
   public get router() {
     return this._router;
   }
 
-  public set(key: keyof AppConfig, value: any) {
-    //@ts-ignore
-    this._config[key] = value;
+  public set(key: keyof ConfigInterface, value: any) {
+    config.set(key, value);
 
     return this;
   }

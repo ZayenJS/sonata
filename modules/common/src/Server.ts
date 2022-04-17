@@ -75,12 +75,15 @@ export class Server {
         request.session = userSession;
       }
 
+      logger.custom('Server', __line, `Request: ${request.url}`);
+      logger.custom('Server', __line, request);
+
       try {
         let incompleteRequest = false;
 
         if (!req.url) incompleteRequest = true;
         if (!req.method) incompleteRequest = true;
-        // throw new Error('test');
+
         if (incompleteRequest) {
           return response.status(HttpStatus.BAD_REQUEST).send('Incomplete request');
         }
@@ -115,7 +118,8 @@ export class Server {
 
         request.query = queryParams;
         request.params = routeParams;
-        request.body = await RequestParser.parseBody(req);
+        const body = await RequestParser.parseBody(req);
+        request.body = body;
 
         this.registerMiddlewares();
 
@@ -138,7 +142,15 @@ export class Server {
 
         const injectableArgs = injectionContainer.getInjectableArgs();
 
+        logger.custom('Server', __line, `${routeName} route is being handled`, {
+          injectableArgs,
+        });
+
         let endResponse = await routeHandler(...injectableArgs);
+
+        logger.custom('Server', __line, `${routeName} route has been handled`, {
+          endResponse,
+        });
 
         const headersMetadata = injectionContainer.getHeadersMetadata(
           request,
@@ -156,9 +168,8 @@ export class Server {
 
         if (renderMetadata) {
           const templateName = renderMetadata;
-          const templatePath = path.join(app.config.views, templateName);
 
-          return response.sendFile(templatePath);
+          return response.sendFile(templateName);
         }
 
         if (redirectMetadata) {

@@ -194,20 +194,11 @@ export class InjectionContainer {
   }
 
   public getInjectableArgs() {
-    const injectableArgs = this._store.toBeInjectedParams.map(param => {
-      if (isNumberish(param)) {
-        return +param;
-      }
-
-      return param;
-    });
-
-    return injectableArgs;
+    return this._store.toBeInjectedParams.map(param => (isNumberish(param) ? +param : param));
   }
 
   public injectQueryParams(request: Request, target: object, propertyKey: string) {
     const queryMetadata = Reflect.getMetadata(QUERY_PARAM_METADATA, target, propertyKey) ?? [];
-
     for (const queryData of queryMetadata) {
       let queryParam: any = request.query[queryData.name];
 
@@ -229,7 +220,7 @@ export class InjectionContainer {
     const bodyMetadata = Reflect.getMetadata(BODY_PARAM_METADATA, target, propertyKey) ?? [];
 
     for (const bodyData of bodyMetadata) {
-      let bodyParam: any = request.body[bodyData.name];
+      let bodyParam: any = request.body[bodyData?.name];
 
       if (!bodyData.name) {
         bodyParam = {};

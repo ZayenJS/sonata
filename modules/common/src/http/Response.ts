@@ -3,6 +3,8 @@ import { HttpStatus } from '../enums/http-status.enum';
 import fs from 'fs';
 import { CookieOptions } from './Cookie';
 import { isRedirectStatus } from '../utils';
+import { config } from '../Config/Config';
+import path from 'path';
 
 export interface HttpResponse {
   status?: HttpStatus;
@@ -11,6 +13,7 @@ export interface HttpResponse {
 }
 
 export class Response {
+  private _responseSent = false;
   private _status: number = 200;
   private _defaultHeaders: OutgoingHttpHeaders = {
     'Content-Type': 'text/html',
@@ -25,23 +28,33 @@ export class Response {
   }
 
   public send(data?: string) {
-    this._res.writeHead(this._status, this._headers);
-    this._res.end(data ?? this._data);
+    if (!this._responseSent) {
+      this._responseSent = true;
+      this._res.writeHead(this._status, this._headers);
+      this._res.end(data ?? this._data);
+    }
   }
 
   public render(template: string, data?: { [key: string]: any }) {}
 
-  public sendFile(filePath: string) {
-    this._res.writeHead(this._status, this._headers);
-    this._res.end(fs.readFileSync(filePath));
+  public sendFile(pathFromViews: string) {
+    if (!this._responseSent) {
+      this._responseSent = true;
+
+      const viewsPath = config.get('views') as string;
+      const filePath = path.join(viewsPath, pathFromViews);
+
+      this._res.writeHead(this._status, this._headers);
+      this._res.end(fs.readFileSync(filePath));
+    }
   }
 
   public redirect(url: string, status?: HttpStatus) {
-    const redirectStatus =
-      status && isRedirectStatus(status) ? status : HttpStatus.TEMPORARY_REDIRECT;
-    this.status(redirectStatus);
-    this.setHeader('Location', url);
-    this.send();
+    if (!this._responseSent) {
+      const redirectStatus =
+        status && isRedirectStatus(status) ? status : HttpStatus.MOVED_PERMANENTLY;
+      this.status(redirectStatus).setHeader('Location', url).send();
+    }
   }
 
   public status(status?: HttpStatus) {

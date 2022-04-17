@@ -5,6 +5,7 @@ import { InjectionType } from './enums/InjectionType';
 import { FS } from './Helpers/FS';
 import { Logger } from './Helpers/Logger';
 import { Registerer } from './Services/Registerer';
+export { BaseRepository } from './Repository/BaseRepository';
 
 export * from './http/Request';
 export * from './http/Response';
@@ -50,17 +51,17 @@ export default {
       throw new Error('Could not find package.json');
     }
 
-    const controllersDirectory = FS.search(/[cC]ontrollers?/, rootDir, 'directory');
     const servicesDirectory = FS.search(/[sS]ervices?/, rootDir, 'directory');
+    const controllersDirectory = FS.search(/[cC]ontrollers?/, rootDir, 'directory');
     const entityDirectory = FS.search(/[eE]ntit[y|ies]|[mM]odels?/, rootDir, 'directory');
-    // const repositoryDirectory = FS.search(/[rR]epositor[y|ies]?/, rootDir, 'directory');
+    const repositoryDirectory = FS.search(/[rR]epositor[y|ies]?/, rootDir, 'directory');
 
     try {
       if (controllersDirectory)
         Registerer.load(controllersDirectory, InjectionType.CONTROLLER);
       if (servicesDirectory) Registerer.load(servicesDirectory, InjectionType.SERVICE);
       if (entityDirectory) Registerer.load(entityDirectory, InjectionType.ENTITY);
-      // if (repositoryDirectory) Registerer.load(repositoryDirectory, InjectionType.REPOSITORY);
+      if (repositoryDirectory) Registerer.load(repositoryDirectory, InjectionType.REPOSITORY);
     } catch (e) {
       console.error(e);
       process.exit(1);

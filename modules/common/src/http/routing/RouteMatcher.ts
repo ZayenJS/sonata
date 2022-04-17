@@ -39,7 +39,10 @@ export class RouteMatcher implements RouteMatcherInterface {
 
   private compareRoutePaths(routePath: string, path: string): boolean {
     const routePathParts = routePath.split('/');
+    // remove trailing slash
+    if (routePath.endsWith('/')) routePathParts.pop();
     const pathParts = path.split('/');
+    if (path.endsWith('/')) pathParts.pop();
 
     if (routePathParts.length !== pathParts.length) {
       return false;

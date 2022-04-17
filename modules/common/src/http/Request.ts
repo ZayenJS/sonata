@@ -1,5 +1,5 @@
 import { IncomingHttpHeaders, IncomingMessage } from 'http';
-import { GenericObject, GenericStringObject } from '../@types';
+import { GenericStringObject } from '../@types';
 import { RequestMethod } from '../enums/request-methods.enum';
 import { Cookie } from './Cookie';
 import { Session } from './Session';
@@ -44,8 +44,12 @@ export class Request {
     return this._body as unknown as T;
   }
 
+  public get body() {
+    return this._body;
+  }
+
   public set body(body: GenericStringObject) {
-    this._body = body;
+    this._body = body ?? {};
   }
 
   public getParams<T>() {
@@ -57,15 +61,19 @@ export class Request {
   }
 
   public set params(params: GenericStringObject) {
-    this._params = params;
+    this._params = params ?? {};
   }
 
   public getQuery<T>() {
     return this._query as unknown as T;
   }
 
+  public get query() {
+    return this._query;
+  }
+
   public set query(query: GenericStringObject) {
-    this._query = query;
+    this._query = query ?? {};
   }
 
   public get headers() {
