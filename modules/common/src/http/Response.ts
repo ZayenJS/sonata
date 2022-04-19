@@ -28,6 +28,7 @@ export class Response {
   }
 
   public send(data?: string) {
+    logger.custom('Response | send', __line, 'Sending response....');
     if (!this._responseSent) {
       this._responseSent = true;
       this._res.writeHead(this._status, this._headers);
@@ -35,19 +36,48 @@ export class Response {
     }
   }
 
-  public render(template: string, data?: { [key: string]: any }) {}
+  public render(template: string, data: { [key: string]: any } = {}) {
+    logger.custom('Response | render', __line, 'Rendering template....');
+
+    if (!this._responseSent) {
+      const filePath = path.join(config.get('views') as string, template);
+
+      const fileBuffer = fs
+        .readFileSync(filePath)
+        .toString()
+        .replace(/(?:{{).*(?:}})/g, match => {
+          const key = match.replace(/(?:{{|}})/g, '').trim();
+          return data[key as keyof typeof data] ?? '';
+        });
+
+      this.send(fileBuffer.toString());
+    }
+  }
 
   public sendFile(filePath: string) {
+    logger.custom('Response | sendFile', __line, 'Sending file....');
     if (!this._responseSent) {
-      this._responseSent = true;
+      const data = {
+        type: 'Hello',
+        name: 'Formulaire de connexion',
+        subtitle: 'Veuillez vous connecter',
+      };
 
-      this._res.writeHead(this._status, this._headers);
-      this._res.end(fs.readFileSync(filePath));
+      const fileBuffer = fs
+        .readFileSync(filePath)
+        .toString()
+        .replace(/(?:{{).*(?:}})/g, match => {
+          const key = match.replace(/(?:{{|}})/g, '').trim();
+          return data[key as keyof typeof data] ?? '';
+        });
+
+      this.send(fileBuffer.toString());
     }
   }
 
   public redirect(url: string, status?: HttpStatus) {
     if (!this._responseSent) {
+      logger.custom('Response | redirect', __line, 'Redirecting....');
       const redirectStatus =
         status && isRedirectStatus(status) ? status : HttpStatus.MOVED_PERMANENTLY;
       this.status(redirectStatus).setHeader('Location', url).send();

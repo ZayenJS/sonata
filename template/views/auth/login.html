@@ -7,10 +7,11 @@
     <title>Login</title>
   </head>
   <body>
-    <h1>Login</h1>
+    <h1>Connexion</h1>
+    <p>{{ error }}</p>
     <form method="POST" action="/login">
-      <input type="text" name="email" placeholder="Email" />
-      <input type="password" name="password" placeholder="Password" />
+      <input type="text" name="email" placeholder="Email" value="{{ email }}" />
+      <input type="password" name="password" placeholder="Password" value="{{ password }}" />
       <button type="submit">Login</button>
     </form>
   </body>

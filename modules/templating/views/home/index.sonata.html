@@ -1,0 +1,31 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    Hello {{ word }} From @Sonata !
+    <p>{{ 2 + 2 === 4 && 3 - 2 === 2 ? 'coucou' : 'hello' }}</p>
+    <p>{{ password ?? "no password specified" }}</p>
+
+    <!-- interpolation -->
+    <p>{{ `the name is ${name}` }}</p>
+    <!-- short ternary -->
+    <p>{{ name ?: "Rob" }}</p>
+    <!-- interpolation + ternary/short ternary -->
+    <!-- FIXME: multiple ternary with interpolation doesnt work -->
+    <p>{{ `Hello ${name ?: 'James'}` }}</p>
+
+    {% if name === "Mark" || word === "World": %}
+    <p>{{ name }}</p>
+    {% endif %}
+
+    <form>
+      <input type="text" name="name" placeholder="Name" value="{{name}}" />
+      <input type="text" name="email" placeholder="Email" value="{{email}}" />
+      <input type="submit" value="Submit" />
+    </form>
+  </body>
+</html>

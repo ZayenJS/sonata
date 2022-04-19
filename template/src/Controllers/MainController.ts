@@ -13,6 +13,7 @@ import {
   Route,
 } from '@sonata/common';
 import { GenericStringObject } from '@sonata/common/dist/@types';
+import path from 'path';
 import { User } from '../Entity/User';
 import { UserRepository } from '../Repository/UserRepository';
 import { I18N } from '../Services/I18N';
@@ -38,7 +39,7 @@ export default class MainController extends AbstractController {
 
   @Route('/login', { methods: [RequestMethod.GET] })
   public login(): void {
-    this.response.sendFile('auth/login.html');
+    this.response.sendFile(path.join(__dirname, '..', '..', 'views', 'auth', 'login.html'));
   }
 
   @Route('/login', { methods: [RequestMethod.POST] })
@@ -48,11 +49,17 @@ export default class MainController extends AbstractController {
     const user = await userRepo.findOne(email);
 
     if (!user) {
-      return this.response.status(HttpStatus.UNAUTHORIZED).render('auth/login.html');
+      return this.response.status(HttpStatus.UNAUTHORIZED).render('auth/login.html', {
+        error: 'User not found.',
+        email,
+      });
     }
 
     if (user.password !== password) {
-      return this.response.status(HttpStatus.UNAUTHORIZED).render('auth/login.html');
+      return this.response.status(HttpStatus.UNAUTHORIZED).render('auth/login.html', {
+        error: 'Wrong password.',
+        email,
+      });
     }
 
     this.request.session.user = user;

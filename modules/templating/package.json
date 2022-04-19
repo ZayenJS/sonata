@@ -1,0 +1,12 @@
+{
+  "name": "@sonata/templating",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {},
+  "author": "ZayenJS",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^17.0.25"
+  }
+}
