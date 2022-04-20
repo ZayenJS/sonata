@@ -15,12 +15,28 @@
     <!-- short ternary -->
     <p>{{ name ?: "Rob" }}</p>
     <!-- interpolation + ternary/short ternary -->
-    <!-- FIXME: multiple ternary with interpolation doesnt work -->
     <p>{{ `Hello ${name ?: 'James'}` }}</p>
+    <!-- multiple interpolation -->
+    <p>{{ `Hello ${!name ? "Robert" : "James"} im ${ 2 + 2 === 4 ? '18' : '22'}` }}</p>
 
-    {% if name === "Mark" || word === "World": %}
-    <p>{{ name }}</p>
+    {% if name === "Mark" || word === "Worldd": %}
+    <p>{{ name }} (if)</p>
+    {% elif name === "John": %}
+    <p>{{ name }} ! (john elif)</p>
+    <ul>
+      <li>hello</li>
+      <li>world</li>
+      <li>blalabal</li>
+    </ul>
+    {% else if name === "James" : %}
+    <p>{{ name }} ! (james else if)</p>
+    {% else: %}
+    <p>{{ name }} ! (else)</p>
     {% endif %}
+    <!-- * -->
+    {% for i in range(10): %}
+    <p>hello</p>
+    {% endfor %}
 
     <form>
       <input type="text" name="name" placeholder="Name" value="{{name}}" />

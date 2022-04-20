@@ -1,38 +1,148 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Template = void 0;
+var AddContentType;
+(function (AddContentType) {
+    AddContentType[AddContentType["ADD"] = 1] = "ADD";
+    AddContentType[AddContentType["SKIP_UNTIL_NEXT_BLOCK"] = 2] = "SKIP_UNTIL_NEXT_BLOCK";
+    AddContentType[AddContentType["ADD_UNTIL_NEXT_BLOCK"] = 3] = "ADD_UNTIL_NEXT_BLOCK";
+    AddContentType[AddContentType["SKIP_UNTIL_ENDIF"] = 4] = "SKIP_UNTIL_ENDIF";
+})(AddContentType || (AddContentType = {}));
+const START_KEYWORDS = ['if', 'elseif', 'else if', 'elif', 'else', 'for', 'while'];
+const END_KEYWORDS = ['endif', 'endfor', 'endwhile'];
 class Template {
-    static OPEN_TAG = '{';
-    static CLOSE_TAG = '}';
-    static START_INTERPRETATION = '{';
-    static END_INTERPRETATION = '}';
-    static START_COMMENT = `${Template.OPEN_TAG}#`;
-    static END_COMMENT = `#${Template.CLOSE_TAG}`;
-    static START_CONTROL = `${Template.OPEN_TAG}%`;
-    static END_CONTROL = `%${Template.CLOSE_TAG}`;
-    static START_INCLUDE = `${Template.OPEN_TAG}@`;
-    static END_INCLUDE = `@${Template.CLOSE_TAG}`;
+    _isCompiled = false;
     _template;
+    _parsedTemplate = [];
+    _delimiters;
     _data = {};
-    constructor(template, data) {
+    constructor(template, delimiters, options) {
         this._template = template;
-        this._data = data ?? {};
+        this._delimiters = delimiters;
+        this._data = options.data || {};
+    }
+    addData(data) {
+        this._data = { ...this._data, ...data };
+        return this;
+    }
+    get data() {
+        return Object.freeze(this._data);
+    }
+    modifyData(key, value) {
+        this._data[key] = value;
+        return this;
+    }
+    deleteData(key) {
+        if (!key) {
+            this._data = {};
+            return this;
+        }
+        delete this._data[key];
+        return this;
     }
     render(data = this._data) {
-        if (this._template) {
+        console.time('render');
+        if (this._template && !this._isCompiled) {
             this.compile(data);
         }
-        return this._template;
+        console.timeEnd('render');
+        return this._parsedTemplate.join('\n');
     }
     compile(data = this._data) {
         if (!this._template) {
             throw new Error('Template is empty');
         }
-        this._parseInterpretation(data);
-        this._parseControlFlow(data);
+        if (this._isCompiled) {
+            return this;
+        }
+        // this._parseInterpretation(data);
+        // this._parseControlFlow(data);
+        this._parse();
+        this._isCompiled = true;
+        return this;
+    }
+    _parse() {
+        const templateLines = this._template?.split(`\n`);
+        const startKeywords = START_KEYWORDS.join('|');
+        const endKeywords = END_KEYWORDS.join('|');
+        if (!templateLines) {
+            throw new Error('Template is empty');
+        }
+        const { START_INTERPRETATION, END_INTERPRETATION } = this._delimiters;
+        const { START_CONTROL, END_CONTROL } = this._delimiters;
+        const interpretationRegex = new RegExp(`${START_INTERPRETATION}(.*?)${END_INTERPRETATION}`, 'gims');
+        const startControlRegex = new RegExp(`${START_CONTROL}\\s?(${startKeywords})\\s?(.*?)\\s?:?\\s?${END_CONTROL}`, 'gims');
+        const endControlRegex = new RegExp(`${START_CONTROL}\\s?(${endKeywords})\\s?${END_CONTROL}`, 'gims');
+        let addContentType = AddContentType.ADD;
+        for (const line of templateLines) {
+            console.log({ addContentType });
+            const interpretationMatch = interpretationRegex.exec(line);
+            const startControlMatch = startControlRegex.exec(line);
+            const endControlMatch = endControlRegex.exec(line);
+            if (startControlMatch) {
+                const [, startControlKeyword, controlCondition] = startControlMatch;
+                if (startControlKeyword === 'if') {
+                    const result = this._parseControlFlow(startControlKeyword, controlCondition);
+                    addContentType = result
+                        ? AddContentType.ADD_UNTIL_NEXT_BLOCK
+                        : AddContentType.SKIP_UNTIL_NEXT_BLOCK;
+                    continue;
+                }
+                else if (['elif', 'else if', 'else', 'elseif'].includes(startControlKeyword)) {
+                    if (addContentType === AddContentType.ADD_UNTIL_NEXT_BLOCK) {
+                        addContentType = AddContentType.SKIP_UNTIL_ENDIF;
+                    }
+                    else if (addContentType === AddContentType.SKIP_UNTIL_NEXT_BLOCK) {
+                        const result = this._parseControlFlow(startControlKeyword, controlCondition);
+                        addContentType = result
+                            ? AddContentType.ADD_UNTIL_NEXT_BLOCK
+                            : AddContentType.SKIP_UNTIL_NEXT_BLOCK;
+                    }
+                    continue;
+                }
+            }
+            else if (endControlMatch) {
+                const [, endControlKeyword] = endControlMatch;
+                if (endControlKeyword === 'endif') {
+                    addContentType = AddContentType.ADD;
+                    continue;
+                }
+            }
+            else if (interpretationMatch) {
+                if (addContentType !== AddContentType.ADD &&
+                    addContentType !== AddContentType.ADD_UNTIL_NEXT_BLOCK)
+                    continue;
+                const parsedLine = line.replace(interpretationRegex, (_, group1) => {
+                    let key = group1.trim();
+                    const usesShortTernary = !!key.match(/\?\:/g);
+                    if (usesShortTernary) {
+                        key = key.replace(/(.*?)\?\:.*?/g, (match, group1) => {
+                            // take interpolation into account
+                            const splittedGroup = group1.split('${');
+                            return splittedGroup.length > 1
+                                ? `${splittedGroup[0]}\$\{${splittedGroup[1]} ? ${splittedGroup[1]} :`
+                                : `${group1} ? ${group1} :`;
+                        });
+                    }
+                    // creates a new function with params coming from the keys of the data object
+                    // and returns the value of the evaluated expression
+                    const fn = Function(...Object.keys(this._data), `return ${key}`);
+                    // executes the function with the values of the data object so the expression can use the data object
+                    return fn(...Object.values(this._data));
+                });
+                this._parsedTemplate.push(parsedLine);
+                continue;
+            }
+            if (addContentType !== AddContentType.ADD &&
+                addContentType !== AddContentType.ADD_UNTIL_NEXT_BLOCK)
+                continue;
+            this._parsedTemplate.push(line);
+        }
+        return this._parsedTemplate;
     }
     _parseInterpretation(data = this._data) {
-        this._template = this._template.replace(new RegExp(`${Template.OPEN_TAG}${Template.START_INTERPRETATION}(.*?)${Template.END_INTERPRETATION}${Template.CLOSE_TAG}`, 'g'), (_, group1) => {
+        const { START_INTERPRETATION, END_INTERPRETATION } = this._delimiters;
+        this._template = this._template.replace(new RegExp(`${START_INTERPRETATION}(.*?)${END_INTERPRETATION}`, 'g'), (_, group1) => {
             let key = group1.trim();
             const usesShortTernary = !!key.match(/\?\:/g);
             if (usesShortTernary) {
@@ -44,63 +154,24 @@ class Template {
                         : `${group1} ? ${group1} :`;
                 });
             }
-            const usesInterpolation = !!key.match(/\`.*?\$\{.*?\}.*?\`/g);
-            const usesTernary = !!key.match(/\?.*?\:.*?/g);
-            const usesNullCoalescing = !!key.match(/\?\?.*?/g);
-            // if the key is a ternary operator or nullish coalescing, we need to parse it
-            if (usesTernary || usesNullCoalescing || usesInterpolation) {
-                // creates a new function with params coming from the keys of the data object
-                // and returns the value of the evaluated expression
-                const fn = Function(...Object.keys(data), `return ${key}`);
-                // executes the function with the values of the data object so the expression can use the data object
-                return fn(...Object.values(data));
-            }
-            return data[key] ?? '';
+            // creates a new function with params coming from the keys of the data object
+            // and returns the value of the evaluated expression
+            const fn = Function(...Object.keys(data), `return ${key}`);
+            // executes the function with the values of the data object so the expression can use the data object
+            return fn(...Object.values(data));
         });
     }
-    _parseControlFlow(data = this._data) {
-        const controlFlowRegex = new RegExp(`${Template.START_CONTROL}\\s?(if|for)\\s?(.*?)\\s?:\\s?${Template.END_CONTROL}(.*?)${Template.START_CONTROL}\\s?(?:endif)\\s?${Template.END_CONTROL}`, 'gims');
-        this._template = this._template.replace(controlFlowRegex, (_, group1, group2, group3, group4) => {
-            const control = group1.trim();
-            const condition = group2.trim();
-            const content = group3.trim();
-            const endControl = group4.trim();
-            switch (control) {
-                case 'if':
-                    // if condition working
-                    console.log('IF');
-                    return this._parseIf(condition, content, data);
-                // TODO: else if and else
-                // case 'elif':
-                // case 'elseif':
-                // case 'else if':
-                //   console.log('ELSE IF');
-                //   return this._parseIf(condition, content, data);
-                // case 'else':
-                //   return this._parseElse(data);
-                case 'endif':
-                    console.log('END IF');
-                    return this._parseEndIf(data);
-                // case 'for':
-                //   return this._parseFor(args.join(' '), data);
-                // case 'endfor':
-                //   return this._parseEndFor(data);
-                default:
-                    return '';
-            }
-        });
-    }
-    _parseIf(condition, content, data = this._data) {
-        const fn = Function(...Object.keys(data), `return ${condition}`);
-        const result = fn(...Object.values(data));
-        console.log({ result });
-        if (result) {
-            return content;
+    _parseControlFlow(keyword, condition) {
+        switch (keyword) {
+            case 'if':
+            case 'elseif':
+            case 'else if':
+            case 'elif':
+                const fn = Function(...Object.keys(this._data), `return ${condition}`);
+                return fn(...Object.values(this._data));
+            case 'else':
+                return true;
         }
-        return '';
-    }
-    _parseEndIf(data = this._data) {
-        return '';
     }
 }
 exports.Template = Template;
