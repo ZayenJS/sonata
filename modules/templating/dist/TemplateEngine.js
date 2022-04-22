@@ -68,6 +68,7 @@ const data = {
     name: 'John',
     email: 'john@test.com',
     password: null,
+    framework: 'Sonata',
 };
 const templateEngine = new TemplateEngine(path_1.default.join(__dirname, '..', 'views'));
 // TODO: handle not found error

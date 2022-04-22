@@ -1,6 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Template = void 0;
+const fs_1 = require("fs");
+const path_1 = __importDefault(require("path"));
 var AddContentType;
 (function (AddContentType) {
     AddContentType[AddContentType["ADD"] = 1] = "ADD";
@@ -68,18 +73,39 @@ class Template {
         if (!templateLines) {
             throw new Error('Template is empty');
         }
-        const { START_INTERPRETATION, END_INTERPRETATION } = this._delimiters;
+        const { START_INTERPRETATION, END_INTERPRETATION, START_INCLUDE, END_INCLUDE } = this._delimiters;
         const { START_CONTROL, END_CONTROL } = this._delimiters;
+        const includeRegex = new RegExp(`${START_INCLUDE}(.*?)${END_INCLUDE}`, 'g');
         const interpretationRegex = new RegExp(`${START_INTERPRETATION}(.*?)${END_INTERPRETATION}`, 'gims');
         const startControlRegex = new RegExp(`${START_CONTROL}\\s?(${startKeywords})\\s?(.*?)\\s?:?\\s?${END_CONTROL}`, 'gims');
         const endControlRegex = new RegExp(`${START_CONTROL}\\s?(${endKeywords})\\s?${END_CONTROL}`, 'gims');
         let addContentType = AddContentType.ADD;
+        // convert to a classic for loop to be able to rewind the array to a certain point
         for (const line of templateLines) {
-            console.log({ addContentType });
+            const includeMatch = includeRegex.exec(line);
             const interpretationMatch = interpretationRegex.exec(line);
             const startControlMatch = startControlRegex.exec(line);
             const endControlMatch = endControlRegex.exec(line);
-            if (startControlMatch) {
+            if (includeMatch) {
+                let [, includePath] = includeMatch;
+                const splittedIncludePath = includePath.split('/');
+                const fileName = splittedIncludePath?.pop()?.trim();
+                includePath = splittedIncludePath?.join('/')?.trim();
+                console.log({ fileName });
+                const viewsDirectory = path_1.default.join(__dirname, '..', 'views');
+                const includePathAbsolute = path_1.default.join(viewsDirectory, includePath);
+                const files = (0, fs_1.readdirSync)(includePathAbsolute);
+                const file = files.find(file => file.includes(fileName ?? ''));
+                if (!file) {
+                    throw new Error(`File ${fileName} not found`);
+                }
+                const filePath = path_1.default.join(includePathAbsolute, file);
+                const fileContent = (0, fs_1.readFileSync)(filePath, 'utf-8');
+                console.log({ fileContent });
+                this._parsedTemplate.push(fileContent);
+                continue;
+            }
+            else if (startControlMatch) {
                 const [, startControlKeyword, controlCondition] = startControlMatch;
                 if (startControlKeyword === 'if') {
                     const result = this._parseControlFlow(startControlKeyword, controlCondition);
@@ -88,7 +114,7 @@ class Template {
                         : AddContentType.SKIP_UNTIL_NEXT_BLOCK;
                     continue;
                 }
-                else if (['elif', 'else if', 'else', 'elseif'].includes(startControlKeyword)) {
+                else if (['else if', 'else', 'elseif', 'elif'].includes(startControlKeyword)) {
                     if (addContentType === AddContentType.ADD_UNTIL_NEXT_BLOCK) {
                         addContentType = AddContentType.SKIP_UNTIL_ENDIF;
                     }

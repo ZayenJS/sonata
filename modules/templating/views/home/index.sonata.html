@@ -6,21 +6,26 @@
     <title>Document</title>
   </head>
   <body>
+    {@ includes/header @}
+    <!--  -->
     Hello {{ word }} From @Sonata !
-    <p>{{ 2 + 2 === 4 && 3 - 2 === 2 ? 'coucou' : 'hello' }}</p>
+    <p>{{ 2 + 2 === 4 && 3 - 2 === 2 ? "coucou" : "hello" }}</p>
     <p>{{ password ?? "no password specified" }}</p>
 
     <!-- interpolation -->
     <p>{{ `the name is ${name}` }}</p>
     <!-- short ternary -->
+    <p>{{ name ?: "no name specified" }}</p>
     <p>{{ name ?: "Rob" }}</p>
     <!-- interpolation + ternary/short ternary -->
-    <p>{{ `Hello ${name ?: 'James'}` }}</p>
+    <p>{{ `Hello ${name ?: "James"}` }}</p>
     <!-- multiple interpolation -->
-    <p>{{ `Hello ${!name ? "Robert" : "James"} im ${ 2 + 2 === 4 ? '18' : '22'}` }}</p>
+    <p>{{ `Hello ${name ? "Robert" : "James"} im ${ 2 + 2 === 4 ? "18" : "22" }` }}</p>
 
-    {% if name === "Mark" || word === "Worldd": %}
+    {% if name === "Mark" || word === "World": %}
     <p>{{ name }} (if)</p>
+    {% elseif 2 + 2 === 4: %}
+    <p>nice !</p>
     {% elif name === "John": %}
     <p>{{ name }} ! (john elif)</p>
     <ul>
@@ -30,13 +35,24 @@
     </ul>
     {% else if name === "James" : %}
     <p>{{ name }} ! (james else if)</p>
-    {% else: %}
+    {% else : %}
     <p>{{ name }} ! (else)</p>
     {% endif %}
-    <!-- * -->
+    <!--  -->
     {% for i in range(10): %}
-    <p>hello</p>
+    <span>bonjour</span>
     {% endfor %}
+    <!--  -->
+    {% foreach items as item: %}
+    <p>{{item}}</p>
+    {% endforeach %} 
+    {% set firstName = 'David' %}
+    {{ firstName }}
+
+
+    {% set num = 0  %}
+    {% num++ %}
+    {% endwhile %}
 
     <form>
       <input type="text" name="name" placeholder="Name" value="{{name}}" />
