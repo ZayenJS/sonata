@@ -1,8 +1,29 @@
 import fs from 'fs';
 import path from 'path';
 
-export class TemplateLoader {
-  public constructor(private readonly templatesPath: string) {}
+class TemplateLoader {
+  private static _instance: TemplateLoader;
+  private _templatesPath: string = '';
+
+  private constructor() {}
+
+  public static getInstance() {
+    if (!TemplateLoader._instance) {
+      TemplateLoader._instance = new TemplateLoader();
+    }
+
+    return TemplateLoader._instance;
+  }
+
+  public get templatesPath() {
+    return this._templatesPath;
+  }
+
+  public setTemplatesPath(templatesPath: string) {
+    this._templatesPath = templatesPath;
+
+    return this;
+  }
 
   public load(templateName: string, extensions: string[]) {
     const extensionRegex = new RegExp(`\\.${extensions.join('|')}$`);
@@ -32,3 +53,5 @@ export class TemplateLoader {
     return templateContent;
   }
 }
+
+export default TemplateLoader.getInstance();

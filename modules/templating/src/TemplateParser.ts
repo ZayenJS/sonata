@@ -1,5 +1,5 @@
+import TemplateLoader from './TemplateLoader';
 import { Delimiter } from './TemplateEngine';
-import { escape } from './utils';
 
 export class TemplateParser {
   private _template: string = '';
@@ -14,15 +14,17 @@ export class TemplateParser {
   }
 
   public parse(): string;
-  public parse(template?: string): string {
+  public parse(template: string): string;
+  public parse(template: string, full: boolean): string;
+  public parse(template?: string, full?: boolean): string {
     if (template) this.setTemplate(template);
 
-    this._parseTemplate();
+    this._parseTemplate(template, full);
 
     return this._buffer;
   }
 
-  private _parseTemplate(tmpl: string = this._template) {
+  private _parseTemplate(tmpl: string = this._template, full: boolean = true) {
     const {
       OPEN,
       CLOSE,
@@ -33,7 +35,9 @@ export class TemplateParser {
       INCLUDE,
     } = this.delimiters;
 
-    this._buffer += "const buffer = [];\nbuffer.push('";
+    if (full) this._buffer += 'const buffer = [];';
+
+    this._buffer += `\nbuffer.push('`;
 
     let linenb = 0;
 
@@ -94,11 +98,12 @@ export class TemplateParser {
         const tagContent = tmpl.slice(start + 2, end);
 
         const varDeclarationMatch = /(.*?)=(.*)/i.exec(tagContent);
-
+        const incrDecrMatch = /[\w\d]+\s?\+\+|\+\+\s?[\w\d]+|[\w\d]+\s?--|--\s?[\w\d]+/i.exec(
+          tagContent,
+        );
         const startMatch = /(if|elseif|else if|else|elif|while|foreach|for)(.*?):/i.exec(
           tagContent,
         );
-
         const endMatch = /(endif|endwhile|endforeach|endfor)/i.exec(tagContent);
 
         if (startMatch) {
@@ -121,7 +126,7 @@ export class TemplateParser {
           } else if (keyword === 'for') {
             const [variable, collection] = condition.split(/in/gi).map(s => s.trim());
 
-            this._buffer += `for (const ${variable} in ${collection}) {`;
+            this._buffer += `for (const ${variable} of ${collection}) {`;
           } else {
             throw new Error(`Unknown control keyword "${keyword}" at line ${linenb}`);
           }
@@ -137,16 +142,47 @@ export class TemplateParser {
             .map(d => d.trim())
             .filter(d => d);
 
-          const varAssignment =
-            keyword === 'set'
-              ? `let ${varName} = null; ${varName} = ${value};`
-              : `${keyword} = ${value};`;
-          console.log({ varAssignment });
+          let varAssignment = tagContent.endsWith(';') ? tagContent : `${tagContent};`;
 
-          this._buffer += `');${varAssignment} buffer.push('`;
+          if (keyword === 'set') {
+            varAssignment = `let ${varName} = null; ${varName} = ${value};`;
+          }
+
+          this._buffer += `');${varAssignment.trim()} buffer.push('`;
+        } else if (incrDecrMatch) {
+          const [incrementationOrDecrementation] = incrDecrMatch;
+
+          this._buffer += `');${incrementationOrDecrementation}; buffer.push('`;
         }
 
         i = end + 1;
+        continue;
+      } else if (isStartIncludeTag) {
+        const start = i + OPEN.length + INCLUDE.length;
+        const end = tmpl.indexOf(INCLUDE + CLOSE, i);
+
+        if (end < 0) {
+          throw new Error(`Unclosed tag "${OPEN + INCLUDE}" at line ${linenb}`);
+        }
+
+        const templatePath = tmpl.slice(start, end).trim();
+
+        const include = TemplateLoader.load(templatePath, ['.sonata', '.sonata.html']);
+
+        const parsedInclude = new TemplateParser(this.delimiters, this.data).parse(
+          include,
+          false,
+        );
+
+        i = end + 1;
+
+        console.log({ parsedInclude });
+
+        this._buffer += `');${parsedInclude}; buffer.push('`;
+
+        // this._buffer += parsedInclude;
+        // console.log(this._buffer);
+        // process.exit(0);
         continue;
       }
 
@@ -167,7 +203,8 @@ export class TemplateParser {
       }
     }
 
-    this._buffer += "');return buffer.join('');";
+    this._buffer += "');";
+    if (full) this._buffer += "return buffer.join('');";
     console.log(this._buffer);
 
     return this._buffer;

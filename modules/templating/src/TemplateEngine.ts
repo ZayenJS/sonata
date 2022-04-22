@@ -1,7 +1,7 @@
 import path from 'path';
 
 import { GenericObject, Template } from './Template';
-import { TemplateLoader } from './TemplateLoader';
+import TemplateLoader from './TemplateLoader';
 
 export type DelimiterName =
   | 'OPEN'
@@ -46,7 +46,7 @@ export class TemplateEngine {
   }
 
   public createTemplate(templateName: string, data: GenericObject = {}) {
-    const loader = new TemplateLoader(this.templatesPath);
+    const loader = TemplateLoader.setTemplatesPath(this.templatesPath);
     const templateContent = loader.load(templateName, this._possibleExtensions);
 
     return new Template(templateContent, this._delimiters, {

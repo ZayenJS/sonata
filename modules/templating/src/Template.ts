@@ -82,9 +82,19 @@ export class Template {
       return Array.from({ length: end }, (_, i) => i);
     }
 
-    const fn = new Function(...Object.keys(data), 'escape', 'stack', 'range', parsedTemplate);
+    try {
+      const fn = new Function(
+        ...Object.keys(data),
+        'escape',
+        'stack',
+        'range',
+        parsedTemplate,
+      );
 
-    console.log(fn(...Object.values(data), escape, { linenb: 1 }, range));
+      console.log(fn(...Object.values(data), escape, { linenb: 1 }, range));
+    } catch (error) {
+      console.log({ error });
+    }
 
     this._isCompiled = true;
 
