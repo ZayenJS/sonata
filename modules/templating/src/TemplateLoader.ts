@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { EXTENSIONS } from './constants';
 
 class TemplateLoader {
   private static _instance: TemplateLoader;
@@ -25,7 +26,7 @@ class TemplateLoader {
     return this;
   }
 
-  public load(templateName: string, extensions: string[]) {
+  public load(templateName: string, extensions: string[] = EXTENSIONS) {
     const extensionRegex = new RegExp(`\\.${extensions.join('|')}$`);
     let templateContent = '';
 

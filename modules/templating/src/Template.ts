@@ -1,4 +1,5 @@
 import { Delimiter } from './TemplateEngine';
+import TemplateFunctions from './TemplateFunctions';
 import { TemplateParser } from './TemplateParser';
 import { escape } from './utils';
 
@@ -17,7 +18,8 @@ export interface TemplateOptions {
 export class Template {
   private _isCompiled = false;
   private _template?: string;
-  private _parsedTemplate: string[] = [];
+  private _parsedTemplate: string = '';
+  private _compiledTemplate?: Function;
   private _delimiters: Delimiter;
   private _data: GenericObject = {};
   private _templateParser: TemplateParser;
@@ -60,50 +62,45 @@ export class Template {
   }
 
   public render(data: GenericObject = this._data) {
-    if (this._template && !this._isCompiled) {
+    if (!this._compiledTemplate) {
       this.compile(data);
     }
+    const { range } = TemplateFunctions.getAll();
 
-    return this._parsedTemplate.join('');
+    // @ts-expect-error - at that point we know that this._compiledTemplate is defined
+    return this._compiledTemplate(...Object.values(data), escape, { linenb: 1 }, range);
   }
 
   public compile(data: GenericObject = this._data) {
-    if (!this._template) {
-      throw new Error('Template is empty');
-    }
-
     if (this._isCompiled) {
       return this;
     }
 
-    const parsedTemplate = this._templateParser.setTemplate(this._template).parse();
-
-    function range(end: number) {
-      return Array.from({ length: end }, (_, i) => i);
-    }
+    if (!this._parsedTemplate) this._parse();
 
     try {
-      const fn = new Function(
+      this._compiledTemplate = new Function(
         ...Object.keys(data),
         'escape',
         'stack',
         'range',
-        parsedTemplate,
+        this._parsedTemplate,
       );
-
-      console.log(fn(...Object.values(data), escape, { linenb: 1 }, range));
     } catch (error) {
       console.log({ error });
     }
 
-    this._isCompiled = true;
-
     return this;
   }
 
-  private _parse() {}
+  private _parse() {
+    if (!this._template) {
+      throw new Error('Template is empty');
+    }
 
-  private _parseInterpretation(data: GenericObject = this._data) {}
+    const parsedTemplate = this._templateParser.setTemplate(this._template).parse();
+    this._parsedTemplate = parsedTemplate;
 
-  private _parseControlFlow(keyword: string, condition: string) {}
+    this._isCompiled = true;
+  }
 }

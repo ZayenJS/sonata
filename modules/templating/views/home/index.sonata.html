@@ -1,73 +1,58 @@
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-  </head>
-  <body>
-    {@ includes/header @}
-    <!--  -->
-    Hello {{ word }} From @Sonata !
-    <p>{{ 2 + 2 === 4 && 3 - 2 === 2 ? "coucou" : "hello" }}</p>
-    <p>{{ password ?? "no password specified" }}</p>
+{@ extends layouts/main @}
+<!--  -->
+{@ block main @}
+<!--  -->
+Hello {{ word }} From @Sonata !
+<p>{{ 2 + 2 === 4 && 3 - 2 === 2 ? "coucou" : "hello" }}</p>
+<p>{{ password ?? "no password specified" }}</p>
 
-    <!-- interpolation -->
-    <p>{{ `the name is ${name}` }}</p>
-    <!-- short ternary -->
-    <p>{{ name ?: "no name specified" }}</p>
-    <p>{{ name ?: "Rob" }}</p>
-    <!-- interpolation + ternary/short ternary -->
-    <p>{{ `Hello ${name ?: "James"}` }}</p>
-    <!-- multiple interpolation -->
-    <p>{{ `Hello ${name ? "Robert" : "James"} im ${ 2 + 2 === 4 ? "18" : "22" }` }}</p>
+<!-- interpolation -->
+<p>{{ `the name is ${name}` }}</p>
+<!-- short ternary -->
+<p>{{ name ?: "no name specified" }}</p>
+<p>{{ name ?: "Rob" }}</p>
+<!-- interpolation + ternary/short ternary -->
+<p>{{ `Hello ${name ?: "James"}` }}</p>
+<!-- multiple interpolation -->
+<p>{{ `Hello ${name ? "Robert" : "James"} im ${ 2 + 2 === 4 ? "18" : "22" }` }}</p>
 
-    {% if name === "Mark" || word === "World": %}
-    <p>{{ name }} (if)</p>
-    {% elseif 2 + 2 === 4: %}
-    <p>nice !</p>
-    {% elif name === "John": %}
-    <p>{{ name }} ! (john elif)</p>
-    <ul>
-      <li>hello</li>
-      <li>world</li>
-      <li>blalabal</li>
-    </ul>
-    {% else if name === "James" : %}
-    <p>{{ name }} ! (james else if)</p>
-    {% else : %}
-    <p>{{ name }} ! (else)</p>
-    {% endif %}
-    <!--  -->
-    {% for i in range(10): %}
-    <span>bonjour</span>
-    {% endfor %}
-    <!--  -->
-    {% foreach items as item: %}
-    <p>{{item}}</p>
-    {% endforeach %} 
-    {% set firstName = 'David' %}
-    {{ firstName }}
+{% if name === "Mark" || word === "World": %}
+<p>{{ name }} (if)</p>
+{% elseif 2 + 2 === 4: %}
+<p>nice !</p>
+{% elif name === "John": %}
+<p>{{ name }} ! (john elif)</p>
+<ul>
+  <li>hello</li>
+  <li>world</li>
+  <li>blalabal</li>
+</ul>
+{% else if name === "James" : %}
+<p>{{ name }} ! (james else if)</p>
+{% else : %}
+<p>{{ name }} ! (else)</p>
+{% endif %}
+<!--  -->
+{% for i in range(10): %}
+<span>bonjour</span>
+{% endfor %}
+<!--  -->
+{% foreach items as item: %}
+<p>{{item}}</p>
+{% endforeach %} {% set firstName = 'David' %} {{ firstName }} {% set num = [1, 2 , 3] %} {%
+for i in num: %}
+<p>{{i}}</p>
+{% endfor %} {% set n = 0 %} {% while n < 10: %}
+<p>Hello the number is: {{n}}</p>
+{% n +=5 %} {% endwhile %}
 
+<form>
+  <input type="text" name="name" placeholder="Name" value="{{name}}" />
+  <input type="text" name="email" placeholder="Email" value="{{email}}" />
+  <input type="submit" value="Submit" />
+</form>
+{@ endblock @} 
 
-    {% set num = [1, 2 , 3] %}
-    {% for i in num: %}
-    <p>{{i}}</p>
-    {% endfor %}
-
-
-    {% set n = 0 %}
-    {% while n < 10: %}
-      <p>Hello the number is: {{n}}</p>
-    {% n +=5 %}
-    {% endwhile %}
-
-    <form>
-      <input type="text" name="name" placeholder="Name" value="{{name}}" />
-      <input type="text" name="email" placeholder="Email" value="{{email}}" />
-      <input type="submit" value="Submit" />
-    </form>
-
-    {@ includes/footer @}
-  </body>
-</html>
+{@ block inheritance @}
+<!--  -->
+{@ endblock @}

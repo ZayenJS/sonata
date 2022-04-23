@@ -1,4 +1,5 @@
 import path from 'path';
+import { EXTENSIONS } from './constants';
 
 import { GenericObject, Template } from './Template';
 import TemplateLoader from './TemplateLoader';
@@ -33,7 +34,7 @@ const DEFAULT_DELIMITERS = {
 };
 
 export class TemplateEngine {
-  private _possibleExtensions = ['.sonata', '.sonata.html'];
+  private _possibleExtensions = EXTENSIONS;
   private _delimiters: Delimiter = DEFAULT_DELIMITERS;
   private _cache;
 
@@ -70,10 +71,11 @@ const data = {
   framework: 'Sonata',
   items: ['item 1', 'item 2', 'item 3'],
   number: 1,
+  btnType: 'submit',
 };
 
 const templateEngine = new TemplateEngine(path.join(__dirname, '..', 'views'));
 // TODO: handle not found error
-const template = templateEngine.createTemplate('home/index', data); // the template will use the data passed in the constructor
+const template = templateEngine.createTemplate('home/inheritance', data); // the template will use the data passed in the constructor
 template.compile(); // render will be faster if you compile the template before rendering
-template.render(); // compiles the template if it hasn't been compiled yet and renders it
+console.log(template.render()); // compiles the template if it hasn't been compiled yet and renders it

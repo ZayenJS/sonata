@@ -20,3 +20,9 @@ export const getRandomInt = (min: number, max: number) =>
 export const getRandomString = (length: number) => Math.random().toString(36).slice(2, length);
 
 export const getRandomColor = () => `#${getRandomString(6)}`;
+
+export const regexIndexOf = (text: string, re: RegExp, start: number) => {
+  const indexInSuffix = text.slice(start).search(re);
+
+  return indexInSuffix < 0 ? indexInSuffix : indexInSuffix + start;
+};

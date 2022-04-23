@@ -1,0 +1,10 @@
+{@ extends home/index @}
+
+{@ block test @}
+TESTTTTTTTTTTTTTTTTTTTTT
+{@ endblock @}
+
+
+{@ block inheritance @}
+  this is a test of inheritance !
+{@ endblock @}
