@@ -12,17 +12,14 @@
   <body>
     {@ block main @}
     <!-- main -->
-    {@ endblock @} Lorem ipsum dolor sit amet consectetur adipisicing elit. Non, eveniet
+    {@ endblock @} 
+    
+    Lorem ipsum dolor sit amet consectetur adipisicing elit. Non, eveniet
     praesentium. Modi non, illum odio iusto laboriosam earum accusamus in harum, dignissimos
     asperiores enim cupiditate quisquam vel tenetur labore nobis! Pariatur corrupti, molestiae
     nobis quibusdam dolore fugit mollitia cumque, dolorum expedita voluptatem eligendi
     necessitatibus, aliquam ea aut officia deserunt nostrum quaerat aspernatur. Tenetur, autem
     magni. Fugiat laboriosam earum iusto et?
-
-    <div>
-      {@ block test @}
-      <!-- test -->
-      {@ endblock @}
     </div>
   </body>
 </html>

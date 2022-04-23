@@ -3,6 +3,46 @@ import { Delimiter } from './TemplateEngine';
 import { regexIndexOf } from './utils';
 import { GenericObject } from './Template';
 
+type ControlFlowKeyword =
+  | 'if'
+  | 'elif'
+  | 'else if'
+  | 'elseif'
+  | 'else'
+  | 'for'
+  | 'foreach'
+  | 'while';
+
+interface ParseTagParams {
+  template: string;
+  index: number;
+  linenb: number;
+}
+
+interface ParseControlFlowParams {
+  template: string;
+  index: number;
+  linenb: number;
+}
+
+interface ParseInterpretationTagParams extends ParseTagParams {
+  line: string;
+}
+
+interface ParseCommentTagParams extends ParseTagParams {}
+
+interface ParseIncludeTag extends ParseCommentTagParams {}
+interface ParseBlockTagParams {
+  template: string;
+  start: number;
+}
+
+interface LoadIncludeTemplateParams {
+  template: string;
+  start: number;
+  end: number;
+}
+
 export class TemplateParser {
   private _template: string = '';
   private _buffer: string = '';
@@ -46,9 +86,8 @@ export class TemplateParser {
         parentBlocks,
         currentTemplateBlocks,
       );
-      // TODO: check if the parent template has a parent template to support multiple levels of inheritance
 
-      this.parse(parentTemplateWithInjectedBlocks, true);
+      this.parse(parentTemplateWithInjectedBlocks, full);
 
       return this._buffer;
     }
@@ -58,6 +97,7 @@ export class TemplateParser {
     return this._buffer;
   }
 
+  //! Does not support inheritance
   private _injectBlocks(
     template: string,
     parentBlocks: GenericObject,
@@ -175,16 +215,6 @@ export class TemplateParser {
    * @returns {string} the parsed template
    */
   private _parseTemplate(template: string = this._template, full: boolean = true) {
-    const {
-      OPEN,
-      CLOSE,
-      START_INTERPRETATION,
-      END_INTERPRETATION,
-      COMMENT,
-      CONTROL,
-      INCLUDE,
-    } = this.delimiters;
-
     if (full) this._buffer += 'const buffer = [];';
 
     this._buffer += `\nbuffer.push('`;
@@ -196,176 +226,283 @@ export class TemplateParser {
       const nextChar = template[i + 1];
 
       const line = `stack.linenb=${linenb}`;
-      let prefix;
-      let suffix;
 
-      const isOpenTag = char === OPEN;
-      const nextCharIsInterpretationStart = nextChar === START_INTERPRETATION;
-      const nextCharIsComment = nextChar === COMMENT;
-      const nextCharIsControl = nextChar === CONTROL;
-      const nextCharIsInclude = nextChar === INCLUDE;
-
-      const isStartInterpretationTag = isOpenTag && nextCharIsInterpretationStart;
-      const isStartCommentTag = isOpenTag && nextCharIsComment;
-      const isStartControlTag = isOpenTag && nextCharIsControl;
-      const isStartIncludeTag = isOpenTag && nextCharIsInclude;
+      const {
+        isStartInterpretationTag,
+        isStartCommentTag,
+        isStartControlTag,
+        isStartIncludeTag,
+      } = this._parseChar(char, nextChar);
 
       if (isStartInterpretationTag) {
-        const start = i + OPEN.length + START_INTERPRETATION.length;
-        const end = template.indexOf(END_INTERPRETATION + CLOSE, i);
-
-        if (end < 0) {
-          throw new Error(`Unclosed tag "${OPEN + START_INTERPRETATION}" at line ${linenb}`);
-        }
-
-        let tag = template.slice(start, end).replace(/([^\W]*?)\s?\?\:/gims, (_, p1) => {
-          // will replace the short ternary expression
-          return `${p1} ? ${p1} :`;
+        const { index, toAddToBuffer } = this._parseInterpretationTag({
+          index: i,
+          line,
+          linenb,
+          template,
         });
 
-        i = end + END_INTERPRETATION.length;
-        prefix = `', escape((${line}, `;
-        suffix = `)))`;
-        this._buffer += `${prefix}${tag}${suffix}; buffer.push('`;
+        i = index;
+
+        this._buffer += toAddToBuffer;
         continue;
       } else if (isStartCommentTag) {
-        const end = template.indexOf(COMMENT + CLOSE, i);
+        i = this._parseCommentTag({ template, index: i, linenb });
 
-        if (end < 0) {
-          throw new Error(`Unclosed tag "${OPEN + COMMENT}" at line ${linenb}`);
-        }
-
-        i = end + 1;
         continue;
       } else if (isStartControlTag) {
-        const start = i;
-        const end = template.indexOf(CONTROL + CLOSE, i);
-
-        if (end < 0) {
-          throw new Error(`Unclosed tag "${OPEN + CONTROL}" at line ${linenb}`);
-        }
-
-        const tagContent = template.slice(start + 2, end);
-
-        const varDeclarationMatch = /(.*?)=(.*)/i.exec(tagContent);
-        const incrDecrMatch = /[\w\d]+\s?\+\+|\+\+\s?[\w\d]+|[\w\d]+\s?--|--\s?[\w\d]+/i.exec(
-          tagContent,
-        );
-        const startMatch = /(if|elseif|else if|else|elif|while|foreach|for)(.*?):/i.exec(
-          tagContent,
-        );
-        const endMatch = /(endif|endwhile|endforeach|endfor)/i.exec(tagContent);
-
-        if (startMatch) {
-          this._buffer += "');";
-          const [, keyword, condition] = startMatch;
-
-          if (['elseif', 'else if', 'elif'].includes(keyword)) {
-            this._buffer += `} else if (${condition}) {`;
-          } else if (keyword === 'else') {
-            this._buffer += `} else {`;
-          } else if (keyword === 'if') {
-            this._buffer += `if (${condition}) {`;
-          } else if (keyword === 'while') {
-            this._buffer += `while (${condition}) {`;
-          } else if (keyword === 'foreach') {
-            let [collection, variable] = condition.split(/as/gi).map(s => s.trim()) as any;
-
-            this._buffer += `for (const ${variable} of ${collection}) {`;
-          } else if (keyword === 'for') {
-            const [variable, collection] = condition.split(/in/gi).map(s => s.trim());
-
-            this._buffer += `for (const ${variable} of ${collection}) {`;
-          } else {
-            throw new Error(`Unknown control keyword "${keyword}" at line ${linenb}`);
-          }
-
-          this._buffer += `buffer.push('`;
-        } else if (endMatch) {
-          this._buffer += `')} buffer.push('`;
-        } else if (varDeclarationMatch) {
-          const [, declaration, value] = varDeclarationMatch;
-
-          const [keyword, varName] = declaration
-            .split(/\s/)
-            .map(d => d.trim())
-            .filter(d => d);
-
-          let varAssignment = tagContent.endsWith(';') ? tagContent : `${tagContent};`;
-
-          if (keyword === 'set') {
-            varAssignment = `let ${varName} = null; ${varName} = ${value};`;
-          }
-
-          this._buffer += `');${varAssignment.trim()} buffer.push('`;
-        } else if (incrDecrMatch) {
-          const [incrementationOrDecrementation] = incrDecrMatch;
-
-          this._buffer += `');${incrementationOrDecrementation}; buffer.push('`;
-        }
+        const { end } = this._parseControlFlow({ template, index: i, linenb });
 
         i = end + 1;
         continue;
       } else if (isStartIncludeTag) {
-        const start = i + OPEN.length + INCLUDE.length;
-        const end = template.indexOf(INCLUDE + CLOSE, i);
+        const { start, end, isBlockTemplate } = this._parseIncludeTag({
+          template,
+          index: i,
+          linenb,
+        });
 
-        if (end < 0) {
-          throw new Error(`Unclosed tag "${OPEN + INCLUDE}" at line ${linenb}`);
-        }
-
-        const templatePath = template.slice(start, end).trim();
-
-        const isBlockTemplate = new RegExp(
-          `block\\s?(.*?)\\s?${INCLUDE}${CLOSE}\\n?(.*?)\\n?${OPEN}${INCLUDE}\\s?endblock\\s${INCLUDE}${CLOSE}`,
-          'gims',
-        ).exec(template.slice(start));
         if (isBlockTemplate) {
-          const [, blockName, blockContent] = isBlockTemplate;
-
-          const end = regexIndexOf(
-            template,
-            new RegExp(`endblock\\s?${INCLUDE}${CLOSE}`),
-            start,
-          );
-
-          i = end + 'endblock'.length + INCLUDE.length + CLOSE.length;
+          i = this._parseBlockTag({ template, start });
           continue;
-        } else {
-          // TODO: reactivate to support including templates
-          // const include = TemplateLoader.load(templatePath);
-          // const parsedInclude = new TemplateParser(this.delimiters, this.data).parse(
-          //   include,
-          //   false,
-          // );
-          // this._buffer += `');${parsedInclude}; buffer.push('`;
         }
-        i = end + 1;
 
+        const { toAddToBuffer } = this._loadIncludeTemplate({ template, start, end });
+        this._buffer += toAddToBuffer;
+
+        i = end + 1;
         continue;
       }
 
-      switch (char) {
-        case '\\':
-          this._buffer += '\\\\';
-          break;
-        case "'":
-          this._buffer += "\\'";
-          break;
-        case '\n':
-          linenb++;
-          this._buffer += `\\n`;
-          break;
-
-        default:
-          this._buffer += char;
-      }
+      // will add 1 to the line number if the current character is a new line
+      linenb += this._parseOtherChars(char);
     }
 
     this._buffer += "');";
+
     if (full) this._buffer += "return buffer.join('');";
-    console.log(this._buffer);
 
     return this._buffer;
+  }
+
+  private _parseChar(char: string, nextChar: string) {
+    const { OPEN, START_INTERPRETATION, COMMENT, CONTROL, INCLUDE } = this.delimiters;
+
+    const isOpenTag = char === OPEN;
+    const nextCharIsInterpretationStart = nextChar === START_INTERPRETATION;
+    const nextCharIsComment = nextChar === COMMENT;
+    const nextCharIsControl = nextChar === CONTROL;
+    const nextCharIsInclude = nextChar === INCLUDE;
+
+    const isStartInterpretationTag = isOpenTag && nextCharIsInterpretationStart;
+    const isStartCommentTag = isOpenTag && nextCharIsComment;
+    const isStartControlTag = isOpenTag && nextCharIsControl;
+    const isStartIncludeTag = isOpenTag && nextCharIsInclude;
+
+    return {
+      isStartInterpretationTag,
+      isStartCommentTag,
+      isStartControlTag,
+      isStartIncludeTag,
+    };
+  }
+
+  private _parseOtherChars(char: string) {
+    let lineNbIncrease = 0;
+
+    switch (char) {
+      case '\\':
+        this._buffer += '\\\\';
+        break;
+      case "'":
+        this._buffer += "\\'";
+        break;
+      case '\n':
+        lineNbIncrease = 1;
+        this._buffer += `\\n`;
+        break;
+
+      default:
+        this._buffer += char;
+    }
+
+    return lineNbIncrease;
+  }
+
+  private _parseInterpretationTag({
+    template,
+    index,
+    linenb,
+    line,
+  }: ParseInterpretationTagParams) {
+    const { OPEN, CLOSE, START_INTERPRETATION, END_INTERPRETATION } = this.delimiters;
+
+    const start = index + OPEN.length + START_INTERPRETATION.length;
+    const end = template.indexOf(END_INTERPRETATION + CLOSE, index);
+
+    if (end < 0) {
+      throw new Error(`Unclosed tag "${OPEN + START_INTERPRETATION}" at line ${linenb}`);
+    }
+
+    const tag = template.slice(start, end).replace(/([^\W]*?)\s?\?\:/gims, (_, p1) => {
+      // will replace the short ternary expression
+      return `${p1} ? ${p1} :`;
+    });
+
+    const prefix = `', escape((${line}, `;
+    const suffix = `)))`;
+
+    return {
+      index: end + END_INTERPRETATION.length,
+      toAddToBuffer: `${prefix}${tag}${suffix}; buffer.push('`,
+    };
+  }
+
+  private _parseCommentTag({ template, index, linenb }: ParseCommentTagParams) {
+    const { OPEN, CLOSE, COMMENT } = this.delimiters;
+    const end = template.indexOf(COMMENT + CLOSE, index);
+
+    if (end < 0) {
+      throw new Error(`Unclosed tag "${OPEN + COMMENT}" at line ${linenb}`);
+    }
+
+    return end + 1;
+  }
+
+  private _parseControlFlow({ template, index, linenb }: ParseControlFlowParams) {
+    const { OPEN, CLOSE, CONTROL } = this.delimiters;
+
+    const start = index;
+    const end = template.indexOf(CONTROL + CLOSE, index);
+
+    if (end < 0) {
+      throw new Error(`Unclosed tag "${OPEN + CONTROL}" at line ${linenb}`);
+    }
+
+    const tagContent = template.slice(start + 2, end);
+
+    const varDeclarationMatch = /(.*?)=(.*)/i.exec(tagContent);
+    const incrDecrMatch = /[\w\d]+\s?\+\+|\+\+\s?[\w\d]+|[\w\d]+\s?--|--\s?[\w\d]+/i.exec(
+      tagContent,
+    );
+    const startMatch = /(if|elseif|else if|else|elif|while|foreach|for)(.*?):/i.exec(
+      tagContent,
+    );
+    const endMatch = /(endif|endwhile|endforeach|endfor)/i.exec(tagContent);
+
+    if (startMatch) {
+      this._parseControlFlowTag(startMatch, linenb);
+    } else if (endMatch) {
+      this._buffer += `')} buffer.push('`;
+    } else if (varDeclarationMatch) {
+      const { toAddToBuffer } = this._parseVarDeclaration(varDeclarationMatch, tagContent);
+
+      this._buffer += toAddToBuffer;
+    } else if (incrDecrMatch) {
+      const [incrementationOrDecrementation] = incrDecrMatch;
+
+      this._buffer += `');${incrementationOrDecrementation}; buffer.push('`;
+    }
+
+    return { end };
+  }
+
+  private _parseControlFlowTag(startMatch: RegExpExecArray, linenb: number) {
+    this._buffer += "');";
+    const [, keyword, condition] = startMatch;
+
+    const controlMap = {
+      ...this._getConditionalMap(condition),
+      ...this._getLoopMap(condition),
+    };
+
+    if (!controlMap[keyword as ControlFlowKeyword]) {
+      throw new Error(`Unrecognized control flow keyword "${keyword}" at line ${linenb}`);
+    }
+
+    this._buffer += controlMap[keyword as ControlFlowKeyword]();
+
+    this._buffer += `buffer.push('`;
+  }
+
+  private _getConditionalMap(condition: string) {
+    return {
+      if: () => `if (${condition}) {`,
+      elif: () => `} else if (${condition}) {`,
+      elseif: () => `} else if (${condition}) {`,
+      'else if': () => `} else if (${condition}) {`,
+      else: () => `} else if (${condition}) {`,
+    };
+  }
+
+  private _getLoopMap(condition: string) {
+    return {
+      while: () => `while (${condition}) {`,
+      foreach: () => {
+        let [collection, variable] = condition.split(/as/gi).map(s => s.trim()) as any;
+
+        return `for (const ${variable} of ${collection}) {`;
+      },
+      for: () => {
+        let [variable, collection] = condition.split(/in/gi).map(s => s.trim());
+
+        return `for (let ${variable} of ${collection}) {`;
+      },
+    };
+  }
+
+  private _parseVarDeclaration(varDeclarationMatch: RegExpExecArray, tagContent: string) {
+    const [, declaration, value] = varDeclarationMatch;
+
+    const [keyword, varName] = declaration
+      .split(/\s/)
+      .map(d => d.trim())
+      .filter(d => d);
+
+    let varAssignment = tagContent.endsWith(';') ? tagContent : `${tagContent};`;
+
+    if (keyword === 'set') {
+      varAssignment = `let ${varName} = null; ${varName} = ${value};`;
+    }
+
+    return {
+      toAddToBuffer: `');${varAssignment.trim()} buffer.push('`,
+    };
+  }
+
+  private _parseIncludeTag({ index, linenb, template }: ParseIncludeTag) {
+    const { OPEN, CLOSE, INCLUDE } = this.delimiters;
+
+    const start = index + OPEN.length + INCLUDE.length;
+    const end = template.indexOf(INCLUDE + CLOSE, index);
+
+    if (end < 0) {
+      throw new Error(`Unclosed tag "${OPEN + INCLUDE}" at line ${linenb}`);
+    }
+
+    const isBlockTemplate = new RegExp(
+      `block\\s?(.*?)\\s?${INCLUDE}${CLOSE}\\n?(.*?)\\n?${OPEN}${INCLUDE}\\s?endblock\\s${INCLUDE}${CLOSE}`,
+      'gims',
+    ).exec(template.slice(start));
+
+    return { isBlockTemplate, start, end };
+  }
+
+  private _parseBlockTag({ start, template }: ParseBlockTagParams) {
+    const { CLOSE, INCLUDE } = this.delimiters;
+
+    const end = regexIndexOf(template, new RegExp(`endblock\\s?${INCLUDE}${CLOSE}`), start);
+
+    return end + 'endblock'.length + INCLUDE.length + CLOSE.length;
+  }
+
+  private _loadIncludeTemplate({ template, start, end }: LoadIncludeTemplateParams) {
+    const templatePath = template.slice(start, end).trim();
+    const include = TemplateLoader.load(templatePath);
+    const parsedInclude = new TemplateParser(this.delimiters, this.data).parse(include, false);
+
+    return {
+      toAddToBuffer: `');${parsedInclude}; buffer.push('`,
+    };
   }
 }
