@@ -1,6 +1,6 @@
 import TemplateLoader from './TemplateLoader';
 import { Delimiter } from './TemplateEngine';
-import { regexIndexOf } from './utils';
+import { escapeRegexChars, regexIndexOf } from './utils';
 import { GenericObject } from './Template';
 
 type ControlFlowKeyword =
@@ -43,6 +43,7 @@ interface LoadIncludeTemplateParams {
   end: number;
 }
 
+// TODO: Add documentation
 export class TemplateParser {
   private _template: string = '';
   private _buffer: string = '';
@@ -71,15 +72,27 @@ export class TemplateParser {
    */
 
   public parse(template: string = this._template, full: boolean = true): string {
-    if (template) this.setTemplate(template);
+    let finalTemplate = template;
 
+    if (full) {
+      finalTemplate = this._recursiveParse(template);
+      finalTemplate = this._cleanUpBlockTags();
+    }
+
+    this._parseTemplate(finalTemplate, full);
+
+    return this._buffer;
+  }
+
+  count = 0;
+
+  private _recursiveParse(template: string = this._template): string {
     const parentTemplate = this._findParentTemplate(template);
 
     if (parentTemplate) {
-      template = this._template;
       const parentBlocks = this._findBlocks(parentTemplate);
 
-      const currentTemplateBlocks = this._findBlocks(template);
+      const currentTemplateBlocks = this._findBlocks(this._template);
 
       const parentTemplateWithInjectedBlocks = this._injectBlocks(
         parentTemplate,
@@ -87,19 +100,34 @@ export class TemplateParser {
         currentTemplateBlocks,
       );
 
-      this.parse(parentTemplateWithInjectedBlocks, full);
+      this._template = parentTemplateWithInjectedBlocks;
 
-      return this._buffer;
+      this.count++;
+      this._recursiveParse();
     }
 
-    this._parseTemplate(template, full);
-
-    return this._buffer;
+    return this._template;
   }
 
-  //! Does not support inheritance
+  private _cleanUpBlockTags() {
+    const { OPEN, CLOSE, INCLUDE } = this.delimiters;
+
+    const includeBlockRegex = new RegExp(
+      `${OPEN}${INCLUDE}.*?block.*?${INCLUDE}${CLOSE}\\n?`,
+      'gim',
+    );
+
+    let match;
+
+    while ((match = includeBlockRegex.exec(this._template)) !== null) {
+      this._template = this._template.replace(match[0], '');
+    }
+
+    return this._template;
+  }
+
   private _injectBlocks(
-    template: string,
+    parentTemplate: string,
     parentBlocks: GenericObject,
     currentBlocks: GenericObject,
   ) {
@@ -110,28 +138,31 @@ export class TemplateParser {
       if (!parentBlocks[name]) {
         throw new Error(`${name} block is not defined in the parent template`);
       }
-
       const blockRegex = new RegExp(
-        `${OPEN}${INCLUDE}\\s?block\\s${name}\\s?${INCLUDE}${CLOSE}.*?${parentBlocks[name]}.*?${OPEN}${INCLUDE}\\s?endblock\\s?${INCLUDE}${CLOSE}\\n?`,
-        'sg',
+        `(${OPEN}${INCLUDE}\\s?block\\s?${name}\\s?${INCLUDE}${CLOSE})\\n?(${escapeRegexChars(
+          parentBlocks[name],
+        )})\\n?(${OPEN}${INCLUDE}\\s?endblock\\s?${INCLUDE}${CLOSE}\\n?)`,
+        'sgi',
       );
 
-      template = template.replace(blockRegex, content);
+      if (!blockRegex.test(parentTemplate)) {
+        console.log({
+          blockRegex,
+          name,
+          content,
+          parentTemplate,
+          search: escapeRegexChars(parentBlocks[name]),
+        });
+      }
+
+      parentTemplate = parentTemplate.replace(blockRegex, (_, g1, g2, g3) => {
+        return g1 + content + g3;
+      });
 
       alreadyInjectedBlocks.push(name);
     }
 
-    for (const [name, content] of Object.entries(parentBlocks)) {
-      if (!currentBlocks[name] && !alreadyInjectedBlocks.includes(name)) {
-        const blockRegex = new RegExp(
-          `${OPEN}${INCLUDE}\\s?block\\s${name}\\s?${INCLUDE}${CLOSE}.*?${content}.*?${OPEN}${INCLUDE}\\s?endblock\\s?${INCLUDE}${CLOSE}\\n?`,
-          'sg',
-        );
-        template = template.replace(blockRegex, '');
-      }
-    }
-
-    return template;
+    return parentTemplate;
   }
 
   /**
@@ -215,6 +246,8 @@ export class TemplateParser {
    * @returns {string} the parsed template
    */
   private _parseTemplate(template: string = this._template, full: boolean = true) {
+    console.log({ template, full });
+
     if (full) this._buffer += 'const buffer = [];';
 
     this._buffer += `\nbuffer.push('`;

@@ -1,0 +1,13 @@
+{@ extends home/index @}
+
+{@ block inherited @}
+<strong>
+  i am coming from a child's child!
+</strong>
+{@ endblock @}
+
+{@ block test @} 
+<p>
+  i am also coming from a child's child TEMPLATE !!!!!!
+</p>
+{@ endblock @}

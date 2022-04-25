@@ -26,3 +26,6 @@ export const regexIndexOf = (text: string, re: RegExp, start: number) => {
 
   return indexInSuffix < 0 ? indexInSuffix : indexInSuffix + start;
 };
+
+export const escapeRegexChars = (str: string) =>
+  str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
