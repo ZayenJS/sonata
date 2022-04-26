@@ -75,7 +75,9 @@ export default class MainController extends AbstractController {
     console.log(this.request.session);
 
     // @ts-ignore
-    return `Hello ${this.request.session.user.firstName} ${this.request.session.user.lastName} !`;
+    return this.response.render('connected', {
+      user: this.request.session.user,
+    });
   }
 
   @Route('/translate/:word', { methods: [RequestMethod.GET] })

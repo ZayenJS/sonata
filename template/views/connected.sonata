@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connected</title>
+  </head>
+  <body>
+    <h1>Hello {{ user.firstName }} {{ user.lastName }} !</h1>
+    <h2>Your email is: {{ user.email }}</h2>
+
+    <p>here is a list from 1 to 10:</p>
+    <ul>
+      {% for i in range(1, 10): %}
+      <li>
+        {{ i }}
+        {% test = "Hey guys !" %}
+        <span>here is a variable set from the template -> {{ `${test}-${i}` }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% set testVar = 2 %} {% if testVar === 5: %}
+    <p>testVar is equal to 5</p>
+    {% else: %}
+    <p>testVar is not equal to 5</p>
+    {% endif %}
+  </body>
+</html>

@@ -1,3 +1,5 @@
+import { TemplateEngine } from '@sonata/engine';
+
 import { ServerResponse, OutgoingHttpHeaders } from 'http';
 import { HttpStatus } from '../enums/http-status.enum';
 import fs from 'fs';
@@ -5,6 +7,7 @@ import { CookieOptions } from './Cookie';
 import { isRedirectStatus } from '../utils';
 import { config } from '../Config/Config';
 import path from 'path';
+import app from '../App';
 
 export interface HttpResponse {
   status?: HttpStatus;
@@ -40,17 +43,15 @@ export class Response {
     logger.custom('Response | render', __line, 'Rendering template....');
 
     if (!this._responseSent) {
-      const filePath = path.join(config.get('views') as string, template);
+      const templateEngine = new TemplateEngine(app.config.get('views') as string);
+      const generatedTemplate = templateEngine.createTemplate(template, data);
+      const content = generatedTemplate.compile().render();
 
-      const fileBuffer = fs
-        .readFileSync(filePath)
-        .toString()
-        .replace(/(?:{{).*(?:}})/g, match => {
-          const key = match.replace(/(?:{{|}})/g, '').trim();
-          return data[key as keyof typeof data] ?? '';
-        });
+      logger.custom('Response | render', __line, 'Rendering template...', {
+        content,
+      });
 
-      this.send(fileBuffer.toString());
+      this.send(content);
     }
   }
 

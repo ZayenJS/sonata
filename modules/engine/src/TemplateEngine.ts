@@ -76,7 +76,7 @@ const data = {
 
 const templateEngine = new TemplateEngine(path.join(__dirname, '..', 'views'));
 // TODO: handle not found error
-const template = templateEngine.createTemplate('home/someinheritance', data); // the template will use the data passed in the constructor
+const template = templateEngine.createTemplate('home/index', data); // the template will use the data passed in the constructor
 template.compile(); // render will be faster if you compile the template before rendering
 const renderedTemplate = template.render(); // compiles the template if it hasn't been compiled yet and renders it
 console.log('=========================================');

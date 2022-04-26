@@ -246,8 +246,6 @@ export class TemplateParser {
    * @returns {string} the parsed template
    */
   private _parseTemplate(template: string = this._template, full: boolean = true) {
-    console.log({ template, full });
-
     if (full) this._buffer += 'const buffer = [];';
 
     this._buffer += `\nbuffer.push('`;
@@ -444,9 +442,16 @@ export class TemplateParser {
     this._buffer += "');";
     const [, keyword, condition] = startMatch;
 
+    const jsValidCondition = condition
+      .replace(/\band\b/g, '&&')
+      .replace(/\bor\b/g, '||')
+      .replace(/\bnot\b/g, '!');
+
+    console.log({ jsValidCondition });
+
     const controlMap = {
-      ...this._getConditionalMap(condition),
-      ...this._getLoopMap(condition),
+      ...this._getConditionalMap(jsValidCondition),
+      ...this._getLoopMap(jsValidCondition),
     };
 
     if (!controlMap[keyword as ControlFlowKeyword]) {
@@ -464,7 +469,7 @@ export class TemplateParser {
       elif: () => `} else if (${condition}) {`,
       elseif: () => `} else if (${condition}) {`,
       'else if': () => `} else if (${condition}) {`,
-      else: () => `} else if (${condition}) {`,
+      else: () => `} else {`,
     };
   }
 
