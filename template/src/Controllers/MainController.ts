@@ -72,9 +72,8 @@ export default class MainController extends AbstractController {
       return this.response.redirect('/login');
     }
 
-    console.log(this.request.session);
+    console.log(this.user);
 
-    // @ts-ignore
     return this.response.render('connected', {
       user: this.request.session.user,
     });

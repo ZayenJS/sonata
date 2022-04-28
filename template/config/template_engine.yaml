@@ -1,0 +1,14 @@
+views:
+  ressource: '../views'
+  extension: 'sonata'
+
+routes:
+  private:
+    - '^/'
+    - '^/admin'
+    - '^/admin/login/'
+    - '^/admin/logout'
+  public:
+    - '^/'
+    - '^/login'
+    - '^/logout'

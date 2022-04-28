@@ -2,8 +2,6 @@ import http, { Server as NodeServer } from 'http';
 import path from 'path';
 import { REDIRECT_METADATA, RENDER_METADATA } from './constants';
 
-import app from './App';
-
 import { HttpStatus } from './enums/http-status.enum';
 import { RequestParser } from './Helpers/RequestParser';
 
@@ -59,8 +57,8 @@ export class Server {
     const rootDirectory = FS.findApplicationDirectory();
 
     this._nodeServer = http.createServer(async (req, res) => {
-      const request = new Request(req) as Request;
-      const response = new Response(res) as Response;
+      const request: Request = new Request(req);
+      const response: Response = new Response(res);
 
       if (!rootDirectory) {
         logger.custom('Server', __line, 'Root directory not found');
@@ -72,6 +70,7 @@ export class Server {
       const sessionCookie = cookies.find(cookie => cookie.name === sessionName);
       const userSession = Session.sessions.get(`${sessionCookie?.value}`);
 
+      // TODO: extract to separate method
       if (!sessionCookie) {
         response.setCookie(sessionName, request.session.id);
         request.session.save();
@@ -113,6 +112,7 @@ export class Server {
         return response.setHeader('Content-Type', 'text/css').sendFile(cssFilePath);
       }
 
+      // handle js files
       if (request.url.endsWith('.js')) {
         const jsFilePath = path.join(config.getData().publicFolder, request.url);
         return response
@@ -146,8 +146,10 @@ export class Server {
         const routeHandler = matchingRoute.getHandler();
         const routeName = matchingRoute.getName();
         const controller = matchingRoute.getController();
+        // TODO: extract to separate method - Injecting useful classes
         controller.request = request;
         controller.response = response;
+        controller.user = request.session.user;
 
         const args: unknown[] = [...Object.values(request.params)];
 

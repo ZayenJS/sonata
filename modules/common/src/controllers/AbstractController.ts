@@ -4,7 +4,11 @@ import { Request } from '../http/Request';
 import { HttpResponse, Response } from '../http/Response';
 
 export abstract class AbstractController {
-  constructor(protected readonly request: Request, protected readonly response: Response) {}
+  constructor(
+    protected readonly request: Request,
+    protected readonly response: Response,
+    protected readonly user: any,
+  ) {}
 
   protected json(data: any, status: number = HttpStatus.OK): HttpResponse {
     Logger.getInstance().custom(

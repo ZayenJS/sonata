@@ -5,6 +5,18 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Connected</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: #333;
+        color: #fff;
+      }
+    </style>
   </head>
   <body>
     <h1>Hello {{ user.firstName }} {{ user.lastName }} !</h1>
@@ -20,7 +32,8 @@
       </li>
       {% endfor %}
     </ul>
-    {% set testVar = 2 %} {% if testVar === 5: %}
+    {% set testVar = 2 %}
+    {% if testVar === 5 or testVar !== null: %}
     <p>testVar is equal to 5</p>
     {% else: %}
     <p>testVar is not equal to 5</p>

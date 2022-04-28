@@ -65,6 +65,7 @@ export class FS {
 
   private static isRigthType(basePath: string, type?: 'file' | 'directory') {
     let stats: fs.Stats;
+
     try {
       stats = fs.lstatSync(basePath);
     } catch (e) {
@@ -80,5 +81,9 @@ export class FS {
     }
 
     return false;
+  }
+
+  public static readFile(filePath: string): string {
+    return fs.readFileSync(filePath, 'utf8');
   }
 }
