@@ -1,22 +1,22 @@
-import { FS } from '../Helpers/FS';
-
 export interface ConfigInterface {
   port: number;
-  views: string;
-  publicFolder: string;
+  views_folder: string;
+  views_extension: string;
+  public_folder: string;
 }
 
 export class Config {
   private static _instance: Config;
   private _config: ConfigInterface = {
-    port: 8080,
-    views: `${FS.findRootDirectory()}/views`,
-    publicFolder: `${FS.findRootDirectory()}/public`,
+    port: 5000,
+    views_folder: '',
+    views_extension: 'sonata',
+    public_folder: '',
   };
 
   private constructor() {}
 
-  public get(key: keyof ConfigInterface): string | number | undefined {
+  public get(key: keyof ConfigInterface): string | number {
     return this._config[key];
   }
 

@@ -14,12 +14,11 @@ import {
 } from '@sonata/common';
 import { GenericStringObject } from '@sonata/common/dist/@types';
 import path from 'path';
-import { User } from '../Entity/User';
-import { UserRepository } from '../Repository/UserRepository';
+import { UserRepository } from '../Repositories/UserRepository';
 import { I18N } from '../Services/I18N';
 
 @Controller()
-export default class MainController extends AbstractController {
+export class MainController extends AbstractController {
   @HttpCode(HttpStatus.OK)
   @Render('index.html')
   @Route('/', { methods: [RequestMethod.GET] })

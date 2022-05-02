@@ -1,6 +1,6 @@
 import { Injectable, BaseRepository } from '@sonata/common';
 import { InjectionType } from '@sonata/common/dist/enums/InjectionType';
-import { Product } from '../Entity/Product';
+import { Product } from '../Entities/Product';
 
 const products: Product[] = [];
 

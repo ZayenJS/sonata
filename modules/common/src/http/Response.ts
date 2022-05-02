@@ -5,8 +5,6 @@ import { HttpStatus } from '../enums/http-status.enum';
 import fs from 'fs';
 import { CookieOptions } from './Cookie';
 import { isRedirectStatus } from '../utils';
-import { config } from '../Config/Config';
-import path from 'path';
 import app from '../App';
 
 export interface HttpResponse {
@@ -43,7 +41,7 @@ export class Response {
     logger.custom('Response | render', __line, 'Rendering template....');
 
     if (!this._responseSent) {
-      const templateEngine = new TemplateEngine(app.config.get('views') as string);
+      const templateEngine = new TemplateEngine(app.config.get('views_folder') as string);
       const generatedTemplate = templateEngine.createTemplate(template, data);
       const content = generatedTemplate.compile().render();
 

@@ -1,0 +1,5 @@
+injectables:
+  services: '../src/Services'
+  controllers: '../src/Controllers'
+  entities: '../src/Entities'
+  repositories: '../src/Repositories'

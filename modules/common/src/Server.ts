@@ -108,13 +108,13 @@ export class Server {
 
       // handle css files
       if (request.url.endsWith('.css')) {
-        const cssFilePath = path.join(config.getData().publicFolder, request.url);
+        const cssFilePath = path.join(config.get('public_folder') as string, request.url);
         return response.setHeader('Content-Type', 'text/css').sendFile(cssFilePath);
       }
 
       // handle js files
       if (request.url.endsWith('.js')) {
-        const jsFilePath = path.join(config.getData().publicFolder, request.url);
+        const jsFilePath = path.join(config.get('public_folder') as string, request.url);
         return response
           .setHeader('Content-Type', 'application/javascript')
           .sendFile(jsFilePath);
@@ -190,7 +190,10 @@ export class Server {
 
         if (renderMetadata) {
           const templateName = renderMetadata;
-          const templatePath = path.join(config.get('views') as string, templateName);
+          const templatePath = path.join(
+            config.get('views_extension') as string,
+            templateName,
+          );
 
           return response.sendFile(templatePath);
         }

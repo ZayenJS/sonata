@@ -1,6 +1,6 @@
 import { BaseRepository, Injectable } from '@sonata/common';
 import { InjectionType } from '@sonata/common/dist/enums/InjectionType';
-import { User } from '../Entity/User';
+import { User } from '../Entities/User';
 
 // dummy data
 const users: User[] = [

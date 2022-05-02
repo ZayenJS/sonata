@@ -1,11 +1,15 @@
+import path from 'path';
 import 'reflect-metadata';
-import yamlParser from 'js-yaml';
+import yamlParser from 'yaml';
+import { DeptInjectionConfigInterface, TemplateEngineConfigInterface } from './@types';
 
 import app from './App';
 import { config } from './Config/Config';
+import { InjectionType } from './enums/InjectionType';
 import { FS } from './Helpers/FS';
 import { Logger } from './Helpers/Logger';
 import { ConfigLoader } from './Loader/ConfigLoader';
+import { Registerer } from './Services/Registerer';
 
 export { BaseRepository } from './Repository/BaseRepository';
 export * from './http/Request';
@@ -65,30 +69,39 @@ export default {
       throw new Error('Could not find package.json');
     }
 
-    const configData = config.getData();
-
     const configLoader = new ConfigLoader();
-    const fileContent = configLoader.load('template_engine');
+    const templateEngineConfigFileContent = configLoader.load('template_engine');
 
-    // TODO: implement without using external lib
-    const yamlContent = yamlParser.load(fileContent);
-    console.log({ yamlContent });
+    const templateEngineConfig = yamlParser.parse(
+      templateEngineConfigFileContent,
+    ) as TemplateEngineConfigInterface;
 
-    // const servicesDirectory = FS.search(/[sS]ervices?/, rootDir, 'directory');
-    // const controllersDirectory = FS.search(/[cC]ontrollers?/, rootDir, 'directory');
-    // const entityDirectory = FS.search(/[eE]ntit[y|ies]|[mM]odels?/, rootDir, 'directory');
-    // const repositoryDirectory = FS.search(/[rR]epositor[y|ies]?/, rootDir, 'directory');
+    const deptInjectionConfigFileContent = configLoader.load('dept_injection');
 
-    // try {
-    //   if (controllersDirectory)
-    //     Registerer.load(controllersDirectory, InjectionType.CONTROLLER);
-    //   if (servicesDirectory) Registerer.load(servicesDirectory, InjectionType.SERVICE);
-    //   if (entityDirectory) Registerer.load(entityDirectory, InjectionType.ENTITY);
-    //   if (repositoryDirectory) Registerer.load(repositoryDirectory, InjectionType.REPOSITORY);
-    // } catch (e) {
-    //   console.error(e);
-    //   process.exit(1);
-    // }
+    config.set('views_folder', path.join(rootDir, templateEngineConfig.views.folder));
+    config.set('views_extension', templateEngineConfig.views.extension);
+    config.set('public_folder', path.join(rootDir, 'public'));
+    config.set('port', 5000);
+
+    const deptInjectionConfig = yamlParser.parse(
+      deptInjectionConfigFileContent,
+    ) as DeptInjectionConfigInterface;
+
+    const servicesDirectory = path.join(rootDir, deptInjectionConfig.injectables.services);
+    const controllersDirectory = path.join(
+      rootDir,
+      deptInjectionConfig.injectables.controllers,
+    );
+    const entitiesDirectory = path.join(rootDir, deptInjectionConfig.injectables.entities);
+    const repositoriesDirectory = path.join(
+      rootDir,
+      deptInjectionConfig.injectables.repositories,
+    );
+
+    Registerer.registerServices(servicesDirectory);
+    Registerer.registerControllers(controllersDirectory);
+    Registerer.registerEntities(entitiesDirectory);
+    Registerer.registerRepositories(repositoriesDirectory);
 
     app.create();
 

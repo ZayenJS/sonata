@@ -10,8 +10,8 @@ import {
   RequestMethod,
   Route,
 } from '@sonata/common';
-import { Product } from '../Entity/Product';
-import { ProductRepository } from '../Repository/ProductRepository';
+import { Product } from '../Entities/Product';
+import { ProductRepository } from '../Repositories/ProductRepository';
 
 interface CreateProductInterface {
   name: string;
@@ -22,7 +22,7 @@ interface CreateProductInterface {
 }
 
 @Controller('home')
-export default class ProductController extends AbstractController {
+export class ProductController extends AbstractController {
   @HttpCode(HttpStatus.OK)
   @Route('/product', { methods: [RequestMethod.GET] })
   public async list(productRepository: ProductRepository): Promise<HttpResponse> {

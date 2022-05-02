@@ -1,6 +1,6 @@
 import { Injectable } from '@sonata/common';
 import { InjectionType } from '@sonata/common/dist/enums/InjectionType';
-import { ProductRepository } from '../Repository/ProductRepository';
+import { ProductRepository } from '../Repositories/ProductRepository';
 
 @Injectable(InjectionType.ENTITY)
 export class Product {
