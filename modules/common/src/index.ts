@@ -9,6 +9,7 @@ import { InjectionType } from './enums/InjectionType';
 import { FS } from './Helpers/FS';
 import { Logger } from './Helpers/Logger';
 import { ConfigLoader } from './Loader/ConfigLoader';
+import { EnvLoader } from './Loader/EnvLoader';
 import { Registerer } from './Services/Registerer';
 
 export { BaseRepository } from './Repository/BaseRepository';
@@ -68,6 +69,11 @@ export default {
     if (!rootDir) {
       throw new Error('Could not find package.json');
     }
+
+    const envFileLoader = new EnvLoader();
+    const envVariables = envFileLoader.loadEnvFile();
+
+    console.log(envVariables);
 
     const configLoader = new ConfigLoader();
     const templateEngineConfigFileContent = configLoader.load('template_engine');
