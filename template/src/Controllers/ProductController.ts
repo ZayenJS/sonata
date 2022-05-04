@@ -23,6 +23,11 @@ interface CreateProductInterface {
 
 @Controller('home')
 export class ProductController extends AbstractController {
+  @Route('some-route')
+  public someRoute(): HttpResponse {
+    return this.json({ message: 'Hello World!' });
+  }
+
   @HttpCode(HttpStatus.OK)
   @Route('/product', { methods: [RequestMethod.GET] })
   public async list(productRepository: ProductRepository): Promise<HttpResponse> {

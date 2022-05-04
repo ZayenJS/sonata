@@ -1,6 +1,6 @@
 import http, { Server as NodeServer } from 'http';
 import path from 'path';
-import { REDIRECT_METADATA, RENDER_METADATA } from './constants';
+import { CONTROLLER_METADATA, REDIRECT_METADATA, RENDER_METADATA } from './constants';
 
 import { HttpStatus } from './enums/http-status.enum';
 import { RequestParser } from './Helpers/RequestParser';
@@ -12,8 +12,11 @@ import { InjectionContainer } from './Injection/InjectionContainer';
 import { Session } from './http/Session';
 import { config } from './Config/Config';
 import { FS } from './Helpers/FS';
+import { TemplateEngine } from '@sonata/engine';
 
 export class Server {
+  private request?: Request;
+  private response?: Response;
   private static _created = false;
   private _nodeServer: http.Server = new NodeServer();
 
@@ -47,6 +50,36 @@ export class Server {
 
   public registerMiddlewares() {}
 
+  private _handleSession() {
+    const request = this.request!;
+    const response = this.response!;
+
+    const sessionName = request.session.name;
+    const cookies = request.cookies;
+    const sessionCookie = cookies.find(cookie => cookie.name === sessionName);
+    const userSession = Session.sessions.get(`${sessionCookie?.value}`);
+
+    if (!sessionCookie) {
+      response.setCookie(sessionName, request.session.id);
+      request.session.save();
+    } else if (!userSession) {
+      request.session.id = sessionCookie.value;
+      Session.sessions.set(sessionCookie.value, request.session);
+    } else {
+      request.session = userSession;
+    }
+
+    return request.session;
+  }
+
+  private _sendSonata404Page() {
+    const templateEngine = new TemplateEngine(path.join(__dirname, '..', 'views'));
+    const generatedTemplate = templateEngine.createTemplate('404', { env: 'dev' });
+    const content = generatedTemplate.compile().render();
+
+    return this.response!.status(HttpStatus.NOT_FOUND).send(content);
+  }
+
   public create() {
     if (Server._created) {
       throw new Error(
@@ -59,27 +92,15 @@ export class Server {
     this._nodeServer = http.createServer(async (req, res) => {
       const request: Request = new Request(req);
       const response: Response = new Response(res);
+      this.request = request;
+      this.response = response;
 
       if (!rootDirectory) {
         logger.custom('Server', __line, 'Root directory not found');
         return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Internal server error');
       }
 
-      const sessionName = request.session.name;
-      const cookies = request.cookies;
-      const sessionCookie = cookies.find(cookie => cookie.name === sessionName);
-      const userSession = Session.sessions.get(`${sessionCookie?.value}`);
-
-      // TODO: extract to separate method
-      if (!sessionCookie) {
-        response.setCookie(sessionName, request.session.id);
-        request.session.save();
-      } else if (!userSession) {
-        request.session.id = sessionCookie.value;
-        Session.sessions.set(sessionCookie.value, request.session);
-      } else {
-        request.session = userSession;
-      }
+      request.session = this._handleSession();
 
       logger.custom('Server', __line, `Request: ${request.url}`);
 
@@ -93,11 +114,13 @@ export class Server {
           return response.status(HttpStatus.BAD_REQUEST).send('Incomplete request');
         }
       } catch (e) {
+        // TODO __REMOVE__
         console.error(e);
         const errorMessage = e instanceof Error ? e.message : 'Internal Server Error';
 
-        if (this._catchAllCallback)
+        if (this._catchAllCallback) {
           return this._catchAllCallback(request, response, errorMessage);
+        }
 
         if (this._serverErrorCallback) {
           return this._serverErrorCallback(request, response, errorMessage);
@@ -109,12 +132,14 @@ export class Server {
       // handle css files
       if (request.url.endsWith('.css')) {
         const cssFilePath = path.join(config.get('public_folder') as string, request.url);
+
         return response.setHeader('Content-Type', 'text/css').sendFile(cssFilePath);
       }
 
       // handle js files
       if (request.url.endsWith('.js')) {
         const jsFilePath = path.join(config.get('public_folder') as string, request.url);
+
         return response
           .setHeader('Content-Type', 'application/javascript')
           .sendFile(jsFilePath);
@@ -129,15 +154,14 @@ export class Server {
           if (this._catchAllCallback) return this._catchAllCallback(request, response);
           if (this._notFoundCallback) return this._notFoundCallback(request, response);
 
-          // TODO: send custom Sonata error page
-          res.writeHead(HttpStatus.NOT_FOUND);
-          return res.end('404');
+          return this._sendSonata404Page();
         }
 
         const { queryParams, routeParams } = matchingRoute.extractParams(request.url);
 
         request.query = queryParams;
         request.params = routeParams;
+
         const body = await RequestParser.parseBody(req);
         request.body = body;
 
@@ -146,6 +170,13 @@ export class Server {
         const routeHandler = matchingRoute.getHandler();
         const routeName = matchingRoute.getName();
         const controller = matchingRoute.getController();
+
+        logger.custom(
+          'SERVER',
+          __line,
+          Reflect.getOwnMetadata(CONTROLLER_METADATA, controller, 'constructor'),
+        );
+
         // TODO: extract to separate method - Injecting useful classes
         controller.request = request;
         controller.response = response;

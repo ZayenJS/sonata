@@ -113,10 +113,10 @@ export abstract class AbstractLoader {
    * @throws {Error} if the directory is not readable.
    *
    */
-  public load(filePath: string): string {
+  public load(filePath: string, extensions?: string[]): string {
     const filePathWithDirectory = path.join(this._directory, filePath);
 
-    const possibleExtensions = this.getExtensions().join('|');
+    const possibleExtensions = (extensions ?? this.getExtensions()).join('|');
 
     const foundFile = FS.search(
       new RegExp(`${filePath}\.(${possibleExtensions})$`),

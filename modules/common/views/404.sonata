@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ env === 'dev' ? 'Sonata - ' : '' }}404 Page Not Found</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        background-color: #333;
+        color: #eee;
+      }
+
+      .container {
+        padding: 8rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      {% if env === "dev": %}
+      <h1>Not Found !</h1>
+      <p>The page you are looking for could not be found.</p>
+      <p>Check the URL or try to use the search box below.</p>
+      {% elif env === "prod": %}
+      <h1>Not Found !</h1>
+      {% endif %}
+    </div>
+  </body>
+</html>
