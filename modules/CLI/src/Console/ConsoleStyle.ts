@@ -20,7 +20,7 @@ export enum Effect {
   BLINKING = '5',
 }
 
-export class ConsoleStyle {
+class ConsoleStyle {
   constructor(text?: string, style?: string) {}
 
   private static _(text: string, color?: Colors, fontStyle?: FontStyle, effect?: Effect) {
@@ -71,6 +71,4 @@ export class ConsoleStyle {
   };
 }
 
-const consoleStyle = new ConsoleStyle();
-
-console.log(consoleStyle.red('this is a ').green(`Hello World`).apply());
+export default new ConsoleStyle();

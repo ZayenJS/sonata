@@ -1,5 +1,6 @@
 import enquirer from 'enquirer';
 import { Command } from 'commander';
+import { Controllerfile } from '../File/ControllerFile';
 
 class CLIConsole extends Command {
   private makeCommands = {
@@ -64,9 +65,10 @@ class CLIConsole extends Command {
     options: { [key: string]: any },
     command: Command,
   ) {
-    console.log('Create a new controller');
+    // console.log({ controllerName, options, command });
 
-    console.log({ controllerName, options, command });
+    const controllerFile = new Controllerfile(controllerName as string);
+    controllerFile.generate();
   }
 
   private _makeEntity(entityName: unknown, options: { [key: string]: any }, command: Command) {
