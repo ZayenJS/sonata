@@ -79,6 +79,6 @@ const templateEngine = new TemplateEngine(path.join(__dirname, '..', 'views'));
 const template = templateEngine.createTemplate('home/index', data); // the template will use the data passed in the constructor
 template.compile(); // render will be faster if you compile the template before rendering
 const renderedTemplate = template.render(); // compiles the template if it hasn't been compiled yet and renders it
-// console.log('=========================================');
-// console.log(renderedTemplate);
-// console.log('=========================================');
+console.log('=========================================');
+console.log(renderedTemplate);
+console.log('=========================================');

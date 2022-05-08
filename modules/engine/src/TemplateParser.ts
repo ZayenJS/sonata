@@ -2,6 +2,7 @@ import TemplateLoader from './TemplateLoader';
 import { Delimiter } from './TemplateEngine';
 import { escapeRegexChars, regexIndexOf } from './utils';
 import { GenericObject } from './Template';
+import { Filter, FilterName } from './Filter';
 
 type ControlFlowKeyword =
   | 'if'
@@ -375,13 +376,41 @@ export class TemplateParser {
       throw new Error(`Unclosed tag "${OPEN + START_INTERPRETATION}" at line ${linenb}`);
     }
 
-    const tag = template.slice(start, end).replace(/([^\W]*?)\s?\?\:/gims, (_, p1) => {
+    let tag = template.slice(start, end).replace(/([^\W]*?)\s?\?\:/gims, (_, p1) => {
       // will replace the short ternary expression
       return `${p1} ? ${p1} :`;
     });
 
     const prefix = `', escape((${line}, `;
     const suffix = `)))`;
+
+    const tagWithFilter = tag.split('=>').map(el => el.trim());
+
+    if (tagWithFilter.length > 1) {
+      let variable = tagWithFilter.shift() as string;
+
+      for (const filter of tagWithFilter) {
+        const filterName = filter.split('(')[0];
+        const parameters =
+          /\((.*?)\)/
+            .exec(filter)?.[1]
+            .split(/{(.*?)}/gim)
+            .filter(el => el)
+            .map(el =>
+              el
+                .trim()
+                .split(',')
+                .filter(el => el),
+            )
+            .map(el => el.join(',')) ?? [];
+
+        const filterInstance = new Filter(filterName as FilterName, parameters);
+
+        variable = filterInstance.apply(variable);
+      }
+
+      tag = variable;
+    }
 
     return {
       index: end + END_INTERPRETATION.length,

@@ -2,7 +2,15 @@
 <!--  -->
 {@ block main @} {@ includes/header @}
 <p>index</p>
-{% andalousia = 5 %} {% if andalousia > 0 and andalousia < 10: %} ANDALOUSIA between 0 and 10
-{% endif %}
+================================================
+<br />
+{{text => capitalize}}
+<br />
+date: {{ new Date() => format("fr-FR", { dateStyle: "full" }) => upper }}
+<br />
+{{ "Bonjour" => lower }}
+<br />
+{{ text => capitalize => upper => lower => trim }}
+================================================
 <p>index end</p>
 {@ endblock @}
