@@ -1,5 +1,3 @@
-import chalk from 'chalk';
-
 export enum Colors {
   RED = '31',
   GREEN = '32',
