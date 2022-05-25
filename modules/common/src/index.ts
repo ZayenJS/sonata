@@ -73,7 +73,7 @@ export default {
     const envFileLoader = new EnvLoader();
     const envVariables = envFileLoader.loadEnvFile();
 
-    console.log(envVariables);
+    // TODO: do something with envVariables
 
     const configLoader = new ConfigLoader();
     const templateEngineConfigFileContent = configLoader.load('template_engine');

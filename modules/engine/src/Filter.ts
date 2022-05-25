@@ -22,7 +22,6 @@ export class Filter {
         if (!this.parameters.length) {
           throw new Error('Filter format needs a format string');
         }
-        console.log(this.parameters);
 
         // @ts-ignore
         return DateFormatter.format(variable, this.parameters[0], this.parameters[1]);

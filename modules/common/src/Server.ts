@@ -221,10 +221,7 @@ export class Server {
 
         if (renderMetadata) {
           const templateName = renderMetadata;
-          const templatePath = path.join(
-            config.get('views_extension') as string,
-            templateName,
-          );
+          const templatePath = path.join(config.get('views_folder') as string, templateName);
 
           return response.sendFile(templatePath);
         }

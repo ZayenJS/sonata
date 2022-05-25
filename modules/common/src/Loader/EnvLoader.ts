@@ -16,7 +16,6 @@ export class EnvLoader extends AbstractLoader {
   public loadEnvFile(filePath: string): GenericObject;
   public loadEnvFile(filePath?: string): GenericObject {
     const envFile = process.env.NODE_ENV === 'production' ? 'env' : 'env.local';
-    console.log(envFile);
 
     const fileContent = this.load(filePath ?? '', [envFile]);
 

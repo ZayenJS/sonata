@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TemplateParser = void 0;
 const TemplateLoader_1 = __importDefault(require("./TemplateLoader"));
 const utils_1 = require("./utils");
+const Filter_1 = require("./Filter");
 // TODO: Add documentation
 class TemplateParser {
     delimiters;
@@ -248,15 +249,34 @@ class TemplateParser {
         if (end < 0) {
             throw new Error(`Unclosed tag "${OPEN + START_INTERPRETATION}" at line ${linenb}`);
         }
-        const tag = template.slice(start, end).replace(/([^\W]*?)\s?\?\:/gims, (_, p1) => {
+        let tag = template.slice(start, end).replace(/([^\W]*?)\s?\?\:/gims, (_, p1) => {
             // will replace the short ternary expression
             return `${p1} ? ${p1} :`;
         });
         const prefix = `', escape((${line}, `;
         const suffix = `)))`;
+        const tagWithFilter = tag.split('=>').map(el => el.trim());
+        if (tagWithFilter.length > 1) {
+            let variable = tagWithFilter.shift();
+            for (const filter of tagWithFilter) {
+                const filterName = filter.split('(')[0];
+                const parameters = /\((.*?)\)/
+                    .exec(filter)?.[1]
+                    .split(/{(.*?)}/gim)
+                    .filter(el => el)
+                    .map(el => el
+                    .trim()
+                    .split(',')
+                    .filter(el => el))
+                    .map(el => el.join(',')) ?? [];
+                const filterInstance = new Filter_1.Filter(filterName, parameters);
+                variable = filterInstance.apply(variable);
+            }
+            tag = variable;
+        }
         return {
             index: end + END_INTERPRETATION.length,
-            toAddToBuffer: `${prefix}${tag}${suffix}; buffer.push('`,
+            toAddToBuffer: `${prefix}typeof ${tag} !== 'undefined' ? ${tag} : '' ${suffix}; buffer.push('`,
         };
     }
     _parseCommentTag({ template, index, linenb }) {
@@ -302,7 +322,6 @@ class TemplateParser {
             .replace(/\band\b/g, '&&')
             .replace(/\bor\b/g, '||')
             .replace(/\bnot\b/g, '!');
-        console.log({ jsValidCondition });
         const controlMap = {
             ...this._getConditionalMap(jsValidCondition),
             ...this._getLoopMap(jsValidCondition),

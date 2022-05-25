@@ -414,7 +414,7 @@ export class TemplateParser {
 
     return {
       index: end + END_INTERPRETATION.length,
-      toAddToBuffer: `${prefix}${tag}${suffix}; buffer.push('`,
+      toAddToBuffer: `${prefix}typeof ${tag} !== 'undefined' ? ${tag} : '' ${suffix}; buffer.push('`,
     };
   }
 
@@ -475,8 +475,6 @@ export class TemplateParser {
       .replace(/\band\b/g, '&&')
       .replace(/\bor\b/g, '||')
       .replace(/\bnot\b/g, '!');
-
-    console.log({ jsValidCondition });
 
     const controlMap = {
       ...this._getConditionalMap(jsValidCondition),

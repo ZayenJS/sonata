@@ -36,9 +36,10 @@ export class MainController extends AbstractController {
     return `Hello ${firstName} ${lastName} !`;
   }
 
+  @Render('auth/login.html')
   @Route('/login', { methods: [RequestMethod.GET] })
   public login(): void {
-    this.response.sendFile(path.join(__dirname, '..', '..', 'views', 'auth', 'login.html'));
+    // this.response.sendFile(path.join(__dirname, '..', '..', 'views', 'auth', 'login.html'));
   }
 
   @Route('/login', { methods: [RequestMethod.POST] })
